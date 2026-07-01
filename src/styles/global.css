@@ -1,0 +1,72 @@
+@import "tailwindcss";
+@import "./theme.css";
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink-black);
+    font-family: var(--font-abc-oracle);
+    font-weight: 400;
+    font-size: var(--text-body);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Display headings use the featherweight 300 gesture with tight tracking. */
+  h1,
+  h2,
+  h3 {
+    font-weight: 300;
+  }
+
+  ::selection {
+    background: rgba(0, 0, 0, 0.08);
+  }
+}
+
+@layer components {
+  /* Frosted glass surface used by cards and elevated panels. */
+  .surface-frosted {
+    background-color: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(24px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Ambient spectrum glow — the brand's only chromatic moment.
+     Applied as a low-opacity blurred background, never as a fill. */
+  .ambient-glow::before {
+    content: "";
+    position: absolute;
+    inset: -20% -10% auto -10%;
+    height: 60%;
+    background: var(--gradient-spectrum);
+    opacity: 0.28;
+    filter: blur(90px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Full-bleed login backdrop glow. */
+  .ambient-backdrop {
+    background-color: var(--color-canvas);
+    position: relative;
+    isolation: isolate;
+  }
+  .ambient-backdrop::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--gradient-spectrum);
+    /* Kept soft and pastel: a faint brand wash, not a saturated full-bleed fill. */
+    opacity: 0.16;
+    filter: blur(120px) saturate(0.85);
+    pointer-events: none;
+    z-index: -1;
+  }
+}

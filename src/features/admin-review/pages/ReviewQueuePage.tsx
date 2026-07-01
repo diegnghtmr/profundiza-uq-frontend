@@ -1,0 +1,398 @@
+import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  Badge,
+  Button,
+  Card,
+  SegmentedControl,
+  Spinner,
+  StatusBadge,
+  priorityLabel,
+} from "@/shared/components/ui";
+import { cn } from "@/shared/lib/cn";
+import { useUiStore } from "@/shared/stores/uiStore";
+import type {
+  AdminReviewQueueItem,
+  EnrollmentDecisionType,
+  OfferingGroup,
+  OfferingGroupSummary,
+  PriorityGroup,
+} from "@/shared/api/types";
+import { CapacityDialog } from "@/features/admin-catalog/components/CapacityDialog";
+import { useReviewQueue, useSubmitDecision, reviewKeys } from "../api/reviewApi";
+import { DecisionDialog } from "../components/DecisionDialog";
+
+/** Priority tiers, rendered in queue order within the selected group. */
+const PRIORITY_TIERS: readonly PriorityGroup[] = [
+  "DIRECT_SAME_SHIFT",
+  "WAITLIST_SAME_SHIFT",
+  "WAITLIST_OPPOSITE_SHIFT",
+];
+
+const TIER_HINT: Record<PriorityGroup, string> = {
+  DIRECT_SAME_SHIFT: "Highest priority · same shift as the group.",
+  WAITLIST_SAME_SHIFT: "Considered after direct requests are resolved.",
+  WAITLIST_OPPOSITE_SHIFT: "Lowest priority · student shift differs.",
+};
+
+const ACTIONS: ReadonlyArray<{
+  type: EnrollmentDecisionType;
+  label: string;
+  variant: "neutral" | "soft" | "danger";
+}> = [
+  { type: "ACCEPT", label: "Accept", variant: "neutral" },
+  { type: "REJECT", label: "Reject", variant: "danger" },
+  { type: "ADMIN_CANCEL", label: "Cancel", variant: "soft" },
+  { type: "MOVE_TO_REVIEW", label: "Move", variant: "soft" },
+];
+
+type StatusFilter = "ALL" | "PENDING" | "WAITLIST";
+
+const STATUS_FILTERS = [
+  { value: "ALL" as const, label: "All" },
+  { value: "PENDING" as const, label: "Pending" },
+  { value: "WAITLIST" as const, label: "Waitlist" },
+];
+
+interface PendingDecision {
+  item: AdminReviewQueueItem;
+  type: EnrollmentDecisionType;
+}
+
+/** One offering group's slice of the queue, keyed for the group selector. */
+interface GroupBucket {
+  id: string;
+  label: string;
+  group: OfferingGroup;
+  items: AdminReviewQueueItem[];
+}
+
+export function ReviewQueuePage() {
+  const semesterId = useUiStore((s) => s.selectedSemesterId);
+  const qc = useQueryClient();
+  const { data: items, isLoading } = useReviewQueue(semesterId);
+  const submitDecision = useSubmitDecision();
+
+  const [pending, setPending] = useState<PendingDecision | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [capacityOpen, setCapacityOpen] = useState(false);
+
+  const buckets = useMemo(() => buildBuckets(items ?? []), [items]);
+  const selected = useMemo(
+    () =>
+      buckets.find((b) => b.id === selectedGroupId) ?? buckets[0] ?? null,
+    [buckets, selectedGroupId],
+  );
+
+  const visibleItems = useMemo(
+    () => (selected ? selected.items.filter(matchesStatus(statusFilter)) : []),
+    [selected, statusFilter],
+  );
+
+  return (
+    <section className="flex flex-col gap-8">
+      <header className="flex flex-col gap-3">
+        <h1 className="text-heading font-light tracking-[-2px] text-ink-black">
+          Review Queue
+        </h1>
+        <p className="max-w-2xl text-subheading text-graphite">
+          Resolve one group at a time, in priority order. Every decision requires
+          a reason and is written to the audit trail.
+        </p>
+      </header>
+
+      {isLoading ? (
+        <div className="flex justify-center py-20">
+          <Spinner />
+        </div>
+      ) : !selected ? (
+        <Card className="py-10 text-center text-body-sm text-slate">
+          No requests are waiting for review in this semester.
+        </Card>
+      ) : (
+        <>
+          <GroupPanel
+            buckets={buckets}
+            selected={selected}
+            onSelect={setSelectedGroupId}
+            onAdjustCapacity={() => setCapacityOpen(true)}
+          />
+
+          <div className="flex items-center justify-between gap-4">
+            <SegmentedControl
+              options={STATUS_FILTERS}
+              value={statusFilter}
+              onChange={setStatusFilter}
+            />
+            <span className="text-body-sm text-slate">
+              {visibleItems.length}{" "}
+              {visibleItems.length === 1 ? "request" : "requests"}
+            </span>
+          </div>
+
+          {visibleItems.length === 0 ? (
+            <Card className="py-8 text-center text-body-sm text-slate">
+              No requests match this filter.
+            </Card>
+          ) : (
+            PRIORITY_TIERS.map((tier) => {
+              const rows = visibleItems
+                .filter((it) => it.request.priorityGroup === tier)
+                .sort(
+                  (a, b) =>
+                    a.request.arrivalSequence - b.request.arrivalSequence,
+                );
+              if (rows.length === 0) return null;
+              return (
+                <div key={tier} className="flex flex-col gap-3">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-heading-sm font-medium tracking-[-0.44px] text-ink-black">
+                      {priorityLabel(tier)}
+                    </h2>
+                    <Badge tone="muted">{rows.length}</Badge>
+                    <span className="text-body-sm text-slate">
+                      {TIER_HINT[tier]}
+                    </span>
+                  </div>
+                  <ul className="flex flex-col gap-2.5">
+                    {rows.map((item) => (
+                      <RequestRow
+                        key={item.request.id}
+                        item={item}
+                        onDecision={(type) => setPending({ item, type })}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              );
+            })
+          )}
+        </>
+      )}
+
+      <DecisionDialog
+        open={pending !== null}
+        onOpenChange={(open) => !open && setPending(null)}
+        decisionType={pending?.type ?? null}
+        studentName={pending?.item.student.fullName ?? ""}
+        pending={submitDecision.isPending}
+        onConfirm={(reason) => {
+          if (!pending) return;
+          submitDecision.mutate(
+            {
+              requestId: pending.item.request.id,
+              semesterId,
+              decisionType: pending.type,
+              reason,
+            },
+            { onSettled: () => setPending(null) },
+          );
+        }}
+      />
+
+      <CapacityDialog
+        group={selected ? toGroupSummary(selected.group) : null}
+        semesterId={semesterId}
+        open={capacityOpen}
+        onOpenChange={setCapacityOpen}
+        onAdjusted={() =>
+          qc.invalidateQueries({ queryKey: reviewKeys.list(semesterId) })
+        }
+      />
+    </section>
+  );
+}
+
+/** Group selector + live capacity context for the group under review. */
+function GroupPanel({
+  buckets,
+  selected,
+  onSelect,
+  onAdjustCapacity,
+}: {
+  buckets: GroupBucket[];
+  selected: GroupBucket;
+  onSelect: (id: string) => void;
+  onAdjustCapacity: () => void;
+}) {
+  const g = selected.group;
+  const accepted = Math.max(0, g.acceptedCount ?? 0);
+  const capacity = Math.max(0, g.capacity);
+  const seatsLeft = Math.max(0, capacity - accepted);
+  const onWaitlist =
+    (g.waitlistSameShiftCount ?? 0) + (g.waitlistOppositeShiftCount ?? 0);
+  const fillPct = Math.min(100, Math.round((accepted / Math.max(1, capacity)) * 100));
+
+  return (
+    <Card className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-caption font-medium uppercase tracking-wide text-slate">
+            Reviewing group
+          </span>
+          <select
+            value={selected.id}
+            onChange={(e) => onSelect(e.target.value)}
+            className="h-11 min-w-[280px] rounded-2xl bg-snow px-4 text-body-sm text-ink-black ring-1 ring-inset ring-ink-black/10 focus:outline-none focus:ring-2 focus:ring-ink-black/25"
+          >
+            {buckets.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <Button variant="soft" size="sm" onClick={onAdjustCapacity}>
+          Adjust capacity
+        </Button>
+      </div>
+
+      <p className="text-body-sm text-slate">
+        {g.scheduleText}
+        {g.teacherName ? ` · ${g.teacherName}` : ""}
+      </p>
+
+      <div className="h-1.5 overflow-hidden rounded-full bg-ink-black/[0.07]">
+        <div
+          className="h-full rounded-full transition-[width] duration-300 ease-out"
+          style={{ width: `${fillPct}%`, backgroundColor: capacityColor(fillPct) }}
+        />
+      </div>
+
+      <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <Stat label="Capacity" value={capacity} />
+        <Stat label="Accepted" value={accepted} />
+        <Stat label="Seats left" value={seatsLeft} />
+        <Stat label="On waitlist" value={onWaitlist} accent={onWaitlist > 0} />
+      </dl>
+    </Card>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  accent = false,
+}: {
+  label: string;
+  value: number;
+  accent?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <dt className="text-body-sm text-ash">{label}</dt>
+      <dd
+        className={cn(
+          "text-[28px] font-light leading-none tracking-[-0.5px] tabular-nums",
+          accent ? "text-marigold" : "text-ink-black",
+        )}
+      >
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+/** A single request awaiting a decision, styled as a standalone row card. */
+function RequestRow({
+  item,
+  onDecision,
+}: {
+  item: AdminReviewQueueItem;
+  onDecision: (type: EnrollmentDecisionType) => void;
+}) {
+  return (
+    <li className="surface-frosted flex flex-wrap items-center gap-x-5 gap-y-3 rounded-[20px] px-5 py-4">
+      <span className="w-10 shrink-0 text-body-sm tabular-nums text-slate">
+        #{item.request.arrivalSequence}
+      </span>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate text-body-sm font-medium text-ink-black">
+          {item.student.fullName}
+        </span>
+        <span className="truncate text-caption text-slate">
+          Doc {item.student.documentNumber} · {item.student.institutionalEmail}
+        </span>
+        {item.warnings && item.warnings.length > 0 ? (
+          <span className="mt-1 flex flex-wrap gap-x-3 text-caption text-marigold">
+            {item.warnings.map((w) => (
+              <span key={w}>• {w}</span>
+            ))}
+          </span>
+        ) : null}
+      </div>
+
+      <StatusBadge status={item.request.status} />
+
+      <div className="flex shrink-0 flex-wrap justify-end gap-2">
+        {ACTIONS.map((action) => (
+          <Button
+            key={action.type}
+            variant={action.variant}
+            size="sm"
+            onClick={() => onDecision(action.type)}
+          >
+            {action.label}
+          </Button>
+        ))}
+      </div>
+    </li>
+  );
+}
+
+/** Capacity-bar fill color: black with room, marigold when scarce, red when full. */
+function capacityColor(fillPct: number): string {
+  if (fillPct >= 100) return "#fa3d1d";
+  if (fillPct >= 88) return "#ffb005";
+  return "#000000";
+}
+
+const SHIFT_LABEL: Record<OfferingGroup["shift"], string> = {
+  DAY: "Day",
+  NIGHT: "Night",
+};
+
+/** Bucket the flat queue by offering group, preserving a stable, labelled order. */
+function buildBuckets(items: AdminReviewQueueItem[]): GroupBucket[] {
+  const map = new Map<string, GroupBucket>();
+  for (const item of items) {
+    const id = item.group.id;
+    let bucket = map.get(id);
+    if (!bucket) {
+      bucket = {
+        id,
+        label: `${item.offering.elective.name} · ${item.group.groupCode} · ${SHIFT_LABEL[item.group.shift]}`,
+        group: item.group,
+        items: [],
+      };
+      map.set(id, bucket);
+    }
+    bucket.items.push(item);
+  }
+  return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
+/** Adapt a review-queue group to the shape CapacityDialog expects. */
+function toGroupSummary(g: OfferingGroup): OfferingGroupSummary {
+  return {
+    id: g.id,
+    groupCode: g.groupCode,
+    shift: g.shift,
+    scheduleText: g.scheduleText,
+    capacity: g.capacity,
+    acceptedCount: g.acceptedCount ?? 0,
+    status: g.status,
+  };
+}
+
+function matchesStatus(
+  filter: StatusFilter,
+): (item: AdminReviewQueueItem) => boolean {
+  return (item) => {
+    if (filter === "ALL") return true;
+    if (filter === "PENDING") return item.request.status === "PENDING_REVIEW";
+    return item.request.status.startsWith("WAITLIST");
+  };
+}
