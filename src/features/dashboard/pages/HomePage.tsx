@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Card, StatusBadge } from "@/shared/components/ui";
+import { Card, StatusBadge, DataState, EmptyState } from "@/shared/components/ui";
 import { useUiStore } from "@/shared/stores/uiStore";
 import { useCurrentUser } from "@/features/auth/api/authApi";
 import { useActiveSemester } from "@/shared/api/semestersApi";
@@ -22,7 +22,13 @@ export function HomePage() {
   const { data: user } = useCurrentUser();
   const semester = useActiveSemester();
   const window = useActiveEnrollmentWindow(semesterId);
-  const { data: requests } = useMyRequests(semesterId);
+  const {
+    data: requests,
+    isLoading: requestsLoading,
+    isError: requestsError,
+    error: requestsErrorObj,
+    refetch: refetchRequests,
+  } = useMyRequests(semesterId);
   const labels = useRequestLabels();
 
   const stats = useMemo(() => computeRequestStats(requests), [requests]);
@@ -80,11 +86,28 @@ export function HomePage() {
           </Link>
         </div>
 
-        {recent.length === 0 ? (
-          <p className="rounded-[20px] surface-frosted px-5 py-8 text-center text-body-sm text-slate">
-            You have no requests yet. Browse the catalog to add up to 4.
-          </p>
-        ) : (
+        <DataState
+          isLoading={requestsLoading}
+          isError={requestsError}
+          isEmpty={(requests?.length ?? 0) === 0}
+          error={requestsErrorObj}
+          onRetry={() => void refetchRequests()}
+          emptyState={
+            <EmptyState
+              icon="file-text"
+              title="No requests yet"
+              description="You have no requests yet. Browse the catalog to add up to 4."
+              action={
+                <Link
+                  to="/app/offerings"
+                  className="inline-flex h-11 items-center justify-center rounded-[30px] bg-ink-black px-6 text-body-sm font-medium text-snow transition-opacity duration-200 ease-out hover:opacity-85"
+                >
+                  Browse offerings
+                </Link>
+              }
+            />
+          }
+        >
           <ul className="flex flex-col gap-2.5">
             {recent.map((request) => {
               const label = labels.get(request.offeringGroupId);
@@ -108,7 +131,7 @@ export function HomePage() {
               );
             })}
           </ul>
-        )}
+        </DataState>
       </div>
     </section>
   );
