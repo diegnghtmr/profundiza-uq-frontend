@@ -1,8 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchClient } from "@/shared/api/client";
 import { offeringsKeys } from "@/features/catalog/api/offeringsApi";
-import { errorMessage } from "@/shared/lib/apiErrors";
-import { toast } from "@/shared/stores/toastStore";
+import { notify } from "@/shared/lib/notify";
 import type {
   Elective,
   OfferingGroup,
@@ -79,9 +78,9 @@ export function useCreateElective() {
       fetchClient<Elective>("/electives", { method: "POST", body: input }),
     onSuccess: (elective) => {
       qc.invalidateQueries({ queryKey: catalogAdminKeys.all });
-      toast.success(`Elective “${elective.name}” created.`);
+      notify.success(`Elective “${elective.name}” created.`);
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(error),
   });
 }
 
@@ -114,9 +113,9 @@ export function useCreatePrerequisite(electiveId: string) {
       qc.invalidateQueries({
         queryKey: catalogAdminKeys.electivePrerequisites(electiveId),
       });
-      toast.success("Prerequisite added.");
+      notify.success("Prerequisite added.");
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(error),
   });
 }
 
@@ -141,8 +140,8 @@ export function useAdjustCapacity(semesterId: string) {
       if (semesterId !== "") {
         qc.invalidateQueries({ queryKey: offeringsKeys.list(semesterId) });
       }
-      toast.success("Capacity updated.");
+      notify.success("Capacity updated.");
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(error),
   });
 }
