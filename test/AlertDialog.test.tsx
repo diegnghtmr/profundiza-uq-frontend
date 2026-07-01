@@ -46,6 +46,49 @@ describe("AlertDialog", () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
+  it("does not auto-close on confirm — the parent controls close so a pending action can show progress", async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn();
+    const onOpenChange = vi.fn();
+    render(
+      <AlertDialog
+        open
+        onOpenChange={onOpenChange}
+        title="Cancel this request?"
+        onConfirm={onConfirm}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+
+    // Radix AlertDialogAction auto-closes by default; the wrapper prevents that
+    // so the caller can keep the dialog open (e.g. show a spinner) until the
+    // async confirm settles, then close via `open`/`onOpenChange`.
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+  });
+
+  it("disables the confirm action while a pending flag is set (double-submit guard)", async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn();
+    render(
+      <AlertDialog
+        open
+        onOpenChange={vi.fn()}
+        title="Cancel this request?"
+        onConfirm={onConfirm}
+        confirmLabel="Cancel request"
+        confirmDisabled
+      />,
+    );
+
+    const confirm = screen.getByRole("button", { name: "Cancel request" });
+    expect(confirm).toBeDisabled();
+    await user.click(confirm);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
   it("exposes title and description via aria-labelledby/aria-describedby (FR-005 scenario 3)", () => {
     render(
       <AlertDialog

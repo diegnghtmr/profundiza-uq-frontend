@@ -24,6 +24,12 @@ export interface AlertDialogProps {
  * to Title/Description automatically). `danger` tone renders the confirm
  * action via Button's `danger` variant — a bordered accent, never a saturated
  * fill (CC-VISUAL).
+ *
+ * Close is fully controlled by the parent via `open`/`onOpenChange` (like
+ * Dialog.tsx): the confirm Action calls `preventDefault()` to suppress Radix's
+ * built-in auto-close, so an async `onConfirm` can keep the dialog open (e.g.
+ * show a spinner via `confirmLabel` + `confirmDisabled`) and close it only once
+ * the work settles. Cancel and Escape still close immediately.
  */
 export function AlertDialog({
   open,
@@ -62,7 +68,12 @@ export function AlertDialog({
               <Button
                 variant={tone === "danger" ? "danger" : "neutral"}
                 disabled={confirmDisabled}
-                onClick={onConfirm}
+                onClick={(event) => {
+                  // Suppress Radix's default auto-close; the parent owns close
+                  // via `open` so async confirms can show pending state.
+                  event.preventDefault();
+                  onConfirm();
+                }}
               >
                 {confirmLabel}
               </Button>
