@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 
 vi.mock("@/features/enrollment/api/requestsApi", () => ({
@@ -105,5 +106,53 @@ describe("RequestsPage", () => {
     renderPage();
 
     expect(screen.getByRole("alert")).toHaveTextContent("network down");
+  });
+
+  it("cancels a request through the destructive-confirm AlertDialog (FR-005)", async () => {
+    const user = userEvent.setup();
+    const mutate = vi.fn();
+    mockUseMyRequests.mockReturnValue(asQuery([request({ id: "r1" })]));
+    mockUseCancelRequest.mockReturnValue({
+      mutate,
+      isPending: false,
+    } as unknown as ReturnType<typeof useCancelRequest>);
+
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    const dialog = screen.getByRole("alertdialog", {
+      name: "Cancel this request?",
+    });
+    expect(dialog).toHaveAccessibleDescription(
+      "If you cancel, you lose your position in the queue. Re-submitting later places you at the end.",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Cancel request" }));
+
+    expect(mutate).toHaveBeenCalledWith(
+      "r1",
+      expect.objectContaining({ onSettled: expect.any(Function) }),
+    );
+  });
+
+  it("keeps the request when the AlertDialog is dismissed via its own Cancel action", async () => {
+    const user = userEvent.setup();
+    const mutate = vi.fn();
+    mockUseMyRequests.mockReturnValue(asQuery([request({ id: "r1" })]));
+    mockUseCancelRequest.mockReturnValue({
+      mutate,
+      isPending: false,
+    } as unknown as ReturnType<typeof useCancelRequest>);
+
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await user.click(screen.getByRole("button", { name: "Keep request" }));
+
+    expect(mutate).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("alertdialog", { name: "Cancel this request?" }),
+    ).not.toBeInTheDocument();
   });
 });
