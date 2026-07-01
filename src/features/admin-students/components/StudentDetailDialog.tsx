@@ -7,6 +7,7 @@ import {
   Dialog,
   Input,
   Select,
+  Separator,
   Spinner,
   Tabs,
   TabsContent,
@@ -144,9 +145,11 @@ export function StudentDetailDialog({
               )}
             </section>
 
+            <Separator className="bg-ink-black/[0.06]" />
+
             <form
               onSubmit={handleSubmit(onSubmit)}
-              className="flex flex-col gap-4 border-t border-ink-black/[0.06] pt-5"
+              className="flex flex-col gap-4"
               noValidate
             >
               <h3 className="text-body-sm font-medium text-graphite">

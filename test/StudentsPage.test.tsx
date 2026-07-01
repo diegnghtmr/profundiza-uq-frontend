@@ -175,4 +175,19 @@ describe("StudentsPage", () => {
 
     expect(await dialog.findByText("No records yet.")).toBeInTheDocument();
   });
+
+  it("shows a section divider between the records list and the add-record form (Separator adoption)", async () => {
+    const user = userEvent.setup();
+    mockUseStudents.mockReturnValue(
+      asStudentsQuery([student({ id: "s1", fullName: "Ada Lovelace" })]),
+    );
+
+    render(<StudentsPage />);
+
+    await user.click(screen.getByText("Ada Lovelace"));
+    const dialog = within(screen.getByRole("dialog"));
+    await user.click(dialog.getByRole("tab", { name: "Academic records" }));
+
+    expect(await dialog.findByRole("separator")).toBeInTheDocument();
+  });
 });
