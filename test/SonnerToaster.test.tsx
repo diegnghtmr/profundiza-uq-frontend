@@ -30,4 +30,30 @@ describe("SonnerToaster", () => {
     expect(dot).not.toBeNull();
     expect(dot).toHaveStyle({ backgroundColor: "var(--color-signal-blue)" });
   });
+
+  // Cascade-layer mitigation: Tailwind v4 utilities live in @layer, but Sonner
+  // injects UNLAYERED base CSS that wins regardless of specificity. The frosted
+  // surface therefore relies on (a) Sonner's parameterized CSS custom props for
+  // background/border/text and (b) !important utilities for the layout props
+  // Sonner hardcodes. jsdom can't assert the real cascade, so we assert the
+  // mitigation is wired.
+  it("overrides Sonner's unlayered base CSS so the frosted surface survives", async () => {
+    render(<SonnerToaster />);
+    toast.error("Boom");
+    await screen.findByText("Boom");
+
+    const toaster = document.querySelector<HTMLElement>("[data-sonner-toaster]");
+    expect(toaster).not.toBeNull();
+    expect(toaster?.style.getPropertyValue("--normal-bg").trim()).toBe(
+      "rgba(255, 255, 255, 0.9)",
+    );
+
+    const toastEl = screen
+      .getByText("Boom")
+      .closest("[data-sonner-toast]") as HTMLElement | null;
+    const cls = toastEl?.className ?? "";
+    expect(cls).toContain("!rounded-[20px]");
+    expect(cls).toContain("!shadow-[var(--shadow-sm)]");
+    expect(cls).toContain("!px-5");
+  });
 });
