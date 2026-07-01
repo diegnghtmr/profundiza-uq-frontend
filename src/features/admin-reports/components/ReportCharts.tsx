@@ -85,7 +85,15 @@ export function ReportCharts({ reports }: ReportChartsProps) {
       <h3 className="text-body-sm font-medium text-graphite">
         Exports by status
       </h3>
-      <div aria-hidden="true" className="h-56 w-full">
+      {/*
+        Recharts applies fill/stroke as SVG *presentation attributes*, where CSS
+        `var()` does NOT resolve — so the token values on the props below would
+        silently fall back to Recharts defaults (invisible grid, grey-black ticks)
+        in a real browser. The `.report-chart` class re-applies the same tokens as
+        CSS *declarations* in global.css, which resolve `var()` and override the
+        presentation attributes. The props are kept as intent documentation.
+      */}
+      <div aria-hidden="true" className="report-chart h-56 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data}>
             <CartesianGrid

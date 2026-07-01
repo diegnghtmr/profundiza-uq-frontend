@@ -59,4 +59,19 @@ describe("ReportCharts", () => {
     expect(failedLabel.closest('[aria-hidden="true"]')).toBeNull();
     expect(failedCount.closest('[aria-hidden="true"]')).toBeNull();
   });
+
+  it("wires the monochrome CSS override hook so Recharts' var()-in-SVG-attribute colors resolve", () => {
+    const { container } = render(
+      <ReportCharts
+        reports={[reportExport({ id: "r1", status: "COMPLETED" })]}
+      />,
+    );
+
+    // jsdom can't compute the SVG cascade, so we assert the mitigation is wired:
+    // the chart container carries `.report-chart`, which global.css targets to
+    // re-apply the monochrome tokens as author declarations (see ReportCharts).
+    const chart = container.querySelector(".report-chart");
+    expect(chart).not.toBeNull();
+    expect(chart).toHaveAttribute("aria-hidden", "true");
+  });
 });
