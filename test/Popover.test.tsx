@@ -52,4 +52,32 @@ describe("Popover", () => {
       "Choose a status to narrow the list.",
     );
   });
+
+  it("enters via the FadeIn motion primitive and keeps its content operable immediately (FR-006 scenario 2)", async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    render(
+      <Popover defaultOpen>
+        <PopoverTrigger asChild>
+          <button>Filters</button>
+        </PopoverTrigger>
+        <PopoverContent title="Filter results">
+          <button type="button" onClick={onClick}>
+            Apply
+          </button>
+        </PopoverContent>
+      </Popover>,
+    );
+
+    const content = await screen.findByRole("dialog", {
+      name: "Filter results",
+    });
+    // motion.div writes an inline `opacity` style synchronously at mount —
+    // its presence proves the popover card entrance runs through FadeIn.
+    const card = content.firstElementChild as HTMLElement;
+    expect(card.style.opacity).not.toBe("");
+
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
 });

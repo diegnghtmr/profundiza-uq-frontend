@@ -123,4 +123,26 @@ describe("AlertDialog", () => {
       "bg-snow",
     );
   });
+
+  it("enters via the FadeIn motion primitive and keeps the confirm action clickable immediately (FR-006 scenario 2)", async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn();
+    render(
+      <AlertDialog
+        open
+        onOpenChange={vi.fn()}
+        title="Cancel this request?"
+        onConfirm={onConfirm}
+      />,
+    );
+
+    // motion.div writes an inline `opacity` style synchronously at mount —
+    // its presence proves the dialog card entrance runs through FadeIn.
+    const dialog = screen.getByRole("alertdialog");
+    const card = dialog.firstElementChild as HTMLElement;
+    expect(card.style.opacity).not.toBe("");
+
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
 });
