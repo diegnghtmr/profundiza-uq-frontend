@@ -6,8 +6,7 @@ import type {
   StartLoginResponse,
   VerifyLoginRequest,
 } from "@/shared/api/types";
-import { errorMessage } from "@/shared/lib/apiErrors";
-import { toast } from "@/shared/stores/toastStore";
+import { notify } from "@/shared/lib/notify";
 
 export const authKeys = {
   me: ["auth", "me"] as const,
@@ -73,6 +72,6 @@ export function useLogout() {
       qc.setQueryData(authKeys.me, null);
       qc.clear();
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(error),
   });
 }
