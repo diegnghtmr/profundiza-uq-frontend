@@ -48,3 +48,5 @@ export type { AlertDialogProps, AlertDialogTone } from "./AlertDialog";
 export { Tabs, TabsList, TabsTrigger, TabsContent } from "./Tabs";
 export { Switch } from "./Switch";
 export type { SwitchProps } from "./Switch";
+export { FadeIn } from "./FadeIn";
+export type { FadeInProps, FadeInAs } from "./FadeIn";
