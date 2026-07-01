@@ -57,8 +57,8 @@ describe("FadeIn", () => {
     await waitFor(() => {
       expect(wrapper.style.opacity).toBe("1");
     });
-    // No `y`/scale value is tracked for the reduced-motion variant, so
-    // motion never produces an actual transform.
+    // The reduced-motion variant tracks no `y`/scale, so the settled state is
+    // an explicit `transform: none` — never a `translateY(...)` drift.
     expect(wrapper.style.transform).toBe("none");
   });
 

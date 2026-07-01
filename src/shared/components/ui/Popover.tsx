@@ -51,7 +51,7 @@ export function PopoverContent({
         sideOffset={8}
         aria-labelledby={title ? titleId : undefined}
         aria-describedby={description ? descriptionId : undefined}
-        className={cn("z-50 w-[min(92vw,320px)] focus:outline-none")}
+        className="z-50 w-[min(92vw,320px)] focus:outline-none"
       >
         <FadeIn className={cn("surface-frosted rounded-[20px] p-4", className)}>
           {title ? (
