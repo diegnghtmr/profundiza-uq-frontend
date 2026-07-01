@@ -2,7 +2,7 @@ import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { cn } from "@/shared/lib/cn";
 
 /**
- * Button variants per DESIGN.md. The system deliberately avoids saturated CTAs:
+ * Button variants. The system deliberately avoids saturated CTAs:
  * - neutral: filled #D9D9D9 pebble, hovers to ink-black/white (the "anti-CTA")
  * - ghost:   transparent pill, hover tint only — used for tabs/toggles
  * - soft:    rgba(0,0,0,0.04) fill, 16px radius — contextual/banner actions

@@ -1,7 +1,6 @@
 /**
- * Dia design system tokens for Tailwind CSS v4.
+ * Design system tokens for Tailwind CSS v4.
  * Source of truth: ../../../theme.css (copied here so the app is self-contained).
- * Keep in sync with the project-level DESIGN.md.
  */
 @theme {
   /* Colors */

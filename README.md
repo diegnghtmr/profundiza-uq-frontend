@@ -2,7 +2,7 @@
 
 Web client for the professional-electives enrollment system at Universidad del
 Quindío. Every screen talks to the real backend — there is no mock data path.
-Built on the **Dia** design system: frosted glass, a monochrome surface with a
+Built on a custom design system: frosted glass, a monochrome surface with a
 single spectrum gradient used only as ambient glow, generous radii, and neutral
 (non-saturated) buttons and badges.
 
@@ -105,7 +105,7 @@ presentational).
   in `index.html`); it stands in for the licensed ABC Oracle brand face.
 - The spectrum gradient appears **only** as ambient glow (`.ambient-glow`,
   `.ambient-backdrop`) and small accents (the logo mark, badge dots) — never as a
-  button or badge fill, per DESIGN.md.
+  button or badge fill.
 - Status badges stay monochrome (neutral / muted / solid surfaces); colour is
   carried only by a small leading dot or a subtle 1px border accent.
 

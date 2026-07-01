@@ -6,7 +6,7 @@ import { Spinner } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/cn";
 import type { Notification } from "@/shared/api/types";
 
-/** Alert color used for the unread dot (DESIGN.md unread/alert accent). */
+/** Alert color used for the unread dot. */
 const UNREAD_DOT = "#fa3d1d";
 
 /** Container: lists the student's notifications and marks them read on click. */
