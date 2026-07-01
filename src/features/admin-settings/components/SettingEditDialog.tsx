@@ -3,8 +3,8 @@ import {
   Button,
   Dialog,
   Input,
-  SegmentedControl,
   Spinner,
+  Switch,
   Textarea,
 } from "@/shared/components/ui";
 import {
@@ -23,11 +23,6 @@ function kindOf(value: SettingValue): ValueKind {
   if (typeof value === "string") return "string";
   return "json";
 }
-
-const BOOLEAN_OPTIONS = [
-  { value: "true", label: "True" },
-  { value: "false", label: "False" },
-] as const;
 
 /**
  * Edits a single global setting. The value is JSONB, so the control adapts to
@@ -135,14 +130,11 @@ export function SettingEditDialog({
     >
       <div className="flex flex-col gap-5">
         {kind === "boolean" ? (
-          <div className="flex flex-col gap-2">
-            <span className="text-body-sm font-medium text-graphite">Value</span>
-            <SegmentedControl
-              options={BOOLEAN_OPTIONS}
-              value={draft === "true" ? "true" : "false"}
-              onChange={setDraft}
-            />
-          </div>
+          <Switch
+            checked={draft === "true"}
+            onCheckedChange={(checked) => setDraft(checked ? "true" : "false")}
+            label="Value"
+          />
         ) : kind === "number" ? (
           <Input
             label="Value"
