@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Mock the data layer so the page renders without a QueryClient/network.
@@ -157,5 +158,19 @@ describe("ReviewQueuePage", () => {
     renderPage();
 
     expect(screen.getByRole("alert")).toHaveTextContent("network down");
+  });
+
+  it("opens the row's decision menu and starts the Accept flow (FR-005 scenario 4)", async () => {
+    const user = userEvent.setup();
+    mockUseReviewQueue.mockReturnValue(asQuery([reviewItem()]));
+
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: "Decide" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Accept" }));
+
+    expect(
+      screen.getByRole("heading", { name: "Accept request" }),
+    ).toBeInTheDocument();
   });
 });

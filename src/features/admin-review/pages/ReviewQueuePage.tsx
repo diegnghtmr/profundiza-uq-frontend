@@ -5,7 +5,12 @@ import {
   Button,
   Card,
   DataState,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyState,
+  Icon,
   SegmentedControl,
   StatusBadge,
   priorityLabel,
@@ -37,15 +42,11 @@ const TIER_HINT: Record<PriorityGroup, string> = {
   WAITLIST_OPPOSITE_SHIFT: "Lowest priority · student shift differs.",
 };
 
-const ACTIONS: ReadonlyArray<{
-  type: EnrollmentDecisionType;
-  label: string;
-  variant: "neutral" | "soft" | "danger";
-}> = [
-  { type: "ACCEPT", label: "Accept", variant: "neutral" },
-  { type: "REJECT", label: "Reject", variant: "danger" },
-  { type: "ADMIN_CANCEL", label: "Cancel", variant: "soft" },
-  { type: "MOVE_TO_REVIEW", label: "Move", variant: "soft" },
+const ACTIONS: ReadonlyArray<{ type: EnrollmentDecisionType; label: string }> = [
+  { type: "ACCEPT", label: "Accept" },
+  { type: "REJECT", label: "Reject" },
+  { type: "ADMIN_CANCEL", label: "Cancel" },
+  { type: "MOVE_TO_REVIEW", label: "Move" },
 ];
 
 type StatusFilter = "ALL" | "PENDING" | "WAITLIST";
@@ -342,17 +343,25 @@ function RequestRow({
 
       <StatusBadge status={item.request.status} />
 
-      <div className="flex shrink-0 flex-wrap justify-end gap-2">
-        {ACTIONS.map((action) => (
-          <Button
-            key={action.type}
-            variant={action.variant}
-            size="sm"
-            onClick={() => onDecision(action.type)}
-          >
-            {action.label}
-          </Button>
-        ))}
+      <div className="flex shrink-0 justify-end">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="soft" size="sm">
+              Decide
+              <Icon name="chevron-down" size="sm" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            {ACTIONS.map((action) => (
+              <DropdownMenuItem
+                key={action.type}
+                onSelect={() => onDecision(action.type)}
+              >
+                {action.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </li>
   );
