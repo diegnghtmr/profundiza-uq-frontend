@@ -4,6 +4,7 @@ import {
   Button,
   Dialog,
   Input,
+  Separator,
   Spinner,
   Textarea,
 } from "@/shared/components/ui";
@@ -112,33 +113,36 @@ export function ElectivePrerequisitesDialog({
       )}
 
       {adding ? (
-        <div className="mt-6 flex flex-col gap-4 border-t border-ink-black/[0.06] pt-6">
-          <Input
-            label="Prerequisite name"
-            placeholder="e.g. Data Structures"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <Textarea
-            label="Description"
-            rows={2}
-            placeholder="What the student must have completed…"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-          <div className="flex justify-end gap-3">
-            <Button variant="soft" size="sm" onClick={() => setAdding(false)}>
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              disabled={!valid || createPrerequisite.isPending}
-              onClick={onAdd}
-            >
-              {createPrerequisite.isPending ? <Spinner /> : "Save prerequisite"}
-            </Button>
+        <>
+          <Separator className="mt-6 bg-ink-black/[0.06]" />
+          <div className="mt-6 flex flex-col gap-4">
+            <Input
+              label="Prerequisite name"
+              placeholder="e.g. Data Structures"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <Textarea
+              label="Description"
+              rows={2}
+              placeholder="What the student must have completed…"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+            <div className="flex justify-end gap-3">
+              <Button variant="soft" size="sm" onClick={() => setAdding(false)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                disabled={!valid || createPrerequisite.isPending}
+                onClick={onAdd}
+              >
+                {createPrerequisite.isPending ? <Spinner /> : "Save prerequisite"}
+              </Button>
+            </div>
           </div>
-        </div>
+        </>
       ) : null}
     </Dialog>
   );
