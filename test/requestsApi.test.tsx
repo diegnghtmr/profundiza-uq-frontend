@@ -10,10 +10,26 @@ vi.mock("@/shared/api/client", () => ({
   fetchClient: vi.fn(),
 }));
 
+// FR-002 scenario 3: this file's 2 call sites must route through the
+// `notify` facade, not the legacy `toast` store or sonner directly.
+vi.mock("@/shared/lib/notify", () => ({
+  notify: {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn(),
+  },
+}));
+
 import { fetchClient } from "@/shared/api/client";
-import { useSubmitEnrollmentBatch } from "@/features/enrollment/api/requestsApi";
+import { notify } from "@/shared/lib/notify";
+import {
+  useCancelRequest,
+  useSubmitEnrollmentBatch,
+} from "@/features/enrollment/api/requestsApi";
 
 const mockFetch = vi.mocked(fetchClient);
+const mockNotify = vi.mocked(notify);
 
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({
@@ -22,9 +38,12 @@ function wrapper({ children }: { children: ReactNode }) {
   return createElement(QueryClientProvider, { client }, children);
 }
 
-describe("useSubmitEnrollmentBatch", () => {
-  beforeEach(() => mockFetch.mockReset());
+beforeEach(() => {
+  mockFetch.mockReset();
+  vi.clearAllMocks();
+});
 
+describe("useSubmitEnrollmentBatch", () => {
   it("posts the batch with mapped items and an Idempotency-Key header", async () => {
     mockFetch.mockResolvedValueOnce({ items: [] });
 
@@ -46,5 +65,27 @@ describe("useSubmitEnrollmentBatch", () => {
     });
     const headers = options?.headers as Record<string, string>;
     expect(headers["Idempotency-Key"]).toMatch(/[0-9a-f-]{36}/);
+  });
+
+  it("calls notify.error with the raw error on failure", async () => {
+    const error = new Error("boom");
+    mockFetch.mockRejectedValueOnce(error);
+
+    const { result } = renderHook(() => useSubmitEnrollmentBatch(), { wrapper });
+    result.current.mutate({ semesterId: "sem-1", offeringGroupIds: ["g1"] });
+
+    await waitFor(() => expect(mockNotify.error).toHaveBeenCalledWith(error));
+  });
+});
+
+describe("useCancelRequest", () => {
+  it("calls notify.error with the raw error on failure", async () => {
+    const error = new Error("boom");
+    mockFetch.mockRejectedValueOnce(error);
+
+    const { result } = renderHook(() => useCancelRequest(), { wrapper });
+    result.current.mutate("req-1");
+
+    await waitFor(() => expect(mockNotify.error).toHaveBeenCalledWith(error));
   });
 });

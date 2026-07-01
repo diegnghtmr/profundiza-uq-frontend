@@ -4,8 +4,7 @@ import type {
   EnrollmentRequest,
   EnrollmentRequestBatchResult,
 } from "@/shared/api/types";
-import { errorMessage } from "@/shared/lib/apiErrors";
-import { toast } from "@/shared/stores/toastStore";
+import { notify } from "@/shared/lib/notify";
 
 export const requestsKeys = {
   all: ["requests"] as const,
@@ -57,7 +56,7 @@ export function useSubmitEnrollmentBatch() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: requestsKeys.all });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(error),
   });
 }
 
@@ -72,6 +71,6 @@ export function useCancelRequest() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: requestsKeys.all });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(error),
   });
 }
