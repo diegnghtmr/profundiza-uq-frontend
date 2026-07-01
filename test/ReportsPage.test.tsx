@@ -64,8 +64,15 @@ function semester(): Semester {
   };
 }
 
-function asReportsQuery(data: ReportExport[] | undefined, isLoading = false) {
-  return { data, isLoading, isError: false } as unknown as ReturnType<
+function asReportsQuery(
+  data: ReportExport[] | undefined,
+  {
+    isLoading = false,
+    isError = false,
+    error = undefined as unknown,
+  } = {},
+) {
+  return { data, isLoading, isError, error, refetch: vi.fn() } as unknown as ReturnType<
     typeof useReports
   >;
 }
@@ -110,5 +117,24 @@ describe("ReportsPage", () => {
     expect(
       screen.getByText("No reports requested yet for this semester."),
     ).toBeInTheDocument();
+  });
+
+  it("renders a structure-aware skeleton instead of the spinner while reports load", () => {
+    mockUseReports.mockReturnValue(asReportsQuery(undefined, { isLoading: true }));
+
+    const { container } = render(<ReportsPage />);
+
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(screen.queryByRole("status", { name: "Loading" })).not.toBeInTheDocument();
+  });
+
+  it("renders an inline error when the reports query fails", () => {
+    mockUseReports.mockReturnValue(
+      asReportsQuery(undefined, { isError: true, error: new Error("network down") }),
+    );
+
+    render(<ReportsPage />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("network down");
   });
 });

@@ -3,6 +3,8 @@ import {
   Badge,
   Button,
   Card,
+  DataState,
+  EmptyState,
   SegmentedControl,
   Select,
   Spinner,
@@ -19,6 +21,7 @@ import {
   type ReportFormat,
   type ReportType,
 } from "../api/reportsApi";
+import { ReportsSkeleton } from "../components/ReportsSkeleton";
 
 const REPORT_TYPE_OPTIONS: ReadonlyArray<{ value: ReportType; label: string }> = [
   { value: "GENERAL_SEMESTER", label: "General semester" },
@@ -60,7 +63,13 @@ const STATUS_VISUALS: Record<ReportExportStatus, StatusVisual> = {
 export function ReportsPage() {
   const semesterId = useUiStore((s) => s.selectedSemesterId);
   const activeSemester = useActiveSemester();
-  const { data: reports, isLoading, isError } = useReports(semesterId);
+  const {
+    data: reports,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useReports(semesterId);
   const createReport = useCreateReport(semesterId);
 
   const [reportType, setReportType] = useState<ReportType>("GENERAL_SEMESTER");
@@ -135,37 +144,41 @@ export function ReportsPage() {
           Recent exports
         </h2>
 
-        {semesterId === "" ? null : isLoading ? (
-          <div className="flex justify-center py-20">
-            <Spinner />
-          </div>
-        ) : isError ? (
-          <Card className="py-6 text-body-sm text-slate">
-            Could not load report exports. Please try again.
-          </Card>
-        ) : !reports || reports.length === 0 ? (
-          <Card className="py-6 text-body-sm text-slate">
-            No reports requested yet for this semester.
-          </Card>
-        ) : (
-          <Card className="overflow-hidden p-0">
-            <table className="w-full border-collapse text-left">
-              <thead>
-                <tr className="border-b border-ink-black/[0.06] text-caption uppercase tracking-wide text-slate">
-                  <Th>Type</Th>
-                  <Th>Format</Th>
-                  <Th>Status</Th>
-                  <Th>Requested</Th>
-                  <Th className="text-right">File</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {reports.map((report) => (
-                  <ReportRow key={report.id} report={report} />
-                ))}
-              </tbody>
-            </table>
-          </Card>
+        {semesterId === "" ? null : (
+          <DataState
+            isLoading={isLoading}
+            isError={isError}
+            isEmpty={(reports?.length ?? 0) === 0}
+            error={error}
+            onRetry={() => void refetch()}
+            skeleton={<ReportsSkeleton />}
+            emptyState={
+              <EmptyState
+                icon="file-text"
+                title="No reports yet"
+                description="No reports requested yet for this semester."
+              />
+            }
+          >
+            <Card className="overflow-hidden p-0">
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-ink-black/[0.06] text-caption uppercase tracking-wide text-slate">
+                    <Th>Type</Th>
+                    <Th>Format</Th>
+                    <Th>Status</Th>
+                    <Th>Requested</Th>
+                    <Th className="text-right">File</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(reports ?? []).map((report) => (
+                    <ReportRow key={report.id} report={report} />
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          </DataState>
         )}
       </div>
     </section>
