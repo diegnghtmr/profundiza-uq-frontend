@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Badge,
   Button,
@@ -38,13 +38,17 @@ export function ElectivePrerequisitesDialog({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
-  useEffect(() => {
+  // Reset the inline add-form each time the dialog opens. Done during render
+  // (React's "adjust state on prop change" pattern) rather than in an effect.
+  const [wasOpen, setWasOpen] = useState(false);
+  if (wasOpen !== open) {
+    setWasOpen(open);
     if (open) {
       setAdding(false);
       setName("");
       setDescription("");
     }
-  }, [open]);
+  }
 
   const valid = name.trim().length >= 2 && description.trim().length >= 2;
 

@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AppShell } from "@/shared/components/layout/AppShell";
-import { Spinner } from "@/shared/components/ui";
+import { FullPageFallback } from "./FullPageFallback";
 import { RequireAuth } from "./RequireAuth";
 import { RequireRole } from "./RequireRole";
 
@@ -135,12 +135,4 @@ function lazyPage<M, C extends React.ComponentType<unknown>>(
   pick: (module: M) => C,
 ) {
   return lazy(() => load().then((m) => ({ default: pick(m) })));
-}
-
-function FullPageFallback() {
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      <Spinner />
-    </div>
-  );
 }

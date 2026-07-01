@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { statusBadgeProps, StatusBadge } from "@/shared/components/ui/Badge";
+import { StatusBadge } from "@/shared/components/ui/Badge";
+import { statusBadgeProps } from "@/shared/components/ui/badgeStatus";
 import type { EnrollmentRequestStatus } from "@/shared/api/types";
 
 describe("status badge mapping", () => {

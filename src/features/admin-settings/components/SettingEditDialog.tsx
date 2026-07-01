@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Button,
   Dialog,
@@ -53,13 +53,21 @@ export function SettingEditDialog({
   const [reason, setReason] = useState("");
   const [valueError, setValueError] = useState<string | null>(null);
 
-  // Reset the form whenever a different setting opens the dialog.
-  useEffect(() => {
-    if (!open || !setting) return;
-    setReason("");
-    setValueError(null);
-    setDraft(initialDraft(setting.value, kind));
-  }, [open, setting, kind]);
+  // Reset the form whenever a different setting opens the dialog. Done during
+  // render (React's "adjust state on prop change" pattern) instead of an effect.
+  const [sync, setSync] = useState<{
+    open: boolean;
+    setting: GlobalSetting | null;
+    kind: ValueKind;
+  }>({ open: false, setting: null, kind: "json" });
+  if (sync.open !== open || sync.setting !== setting || sync.kind !== kind) {
+    setSync({ open, setting, kind });
+    if (open && setting) {
+      setReason("");
+      setValueError(null);
+      setDraft(initialDraft(setting.value, kind));
+    }
+  }
 
   const reasonValid = reason.trim().length >= MIN_REASON_LENGTH;
 

@@ -5,6 +5,7 @@ import { useNotifications } from "@/shared/api/notificationsApi";
 import { useActiveEnrollmentWindow } from "@/shared/api/windowsApi";
 import { useUiStore } from "@/shared/stores/uiStore";
 import { useCountdown } from "@/shared/lib/countdown";
+import { useNow } from "@/shared/lib/useNow";
 
 /**
  * Sticky frosted top bar: logo left, center status pills (active semester, an
@@ -18,7 +19,7 @@ export function TopBar() {
   const { data: notifications } = useNotifications();
   const unread = notifications?.unread ?? 0;
 
-  const now = Date.now();
+  const now = useNow();
   const windowOpen =
     window !== undefined &&
     Date.parse(window.startsAt) <= now &&

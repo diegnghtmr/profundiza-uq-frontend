@@ -1,13 +1,9 @@
 export { Button } from "./Button";
 export type { ButtonProps, ButtonVariant, ButtonSize } from "./Button";
 export { Card, CardTitle, CardDescription } from "./Card";
-export {
-  Badge,
-  StatusBadge,
-  statusBadgeProps,
-  priorityLabel,
-} from "./Badge";
+export { Badge, StatusBadge } from "./Badge";
 export type { BadgeProps, BadgeTone } from "./Badge";
+export { statusBadgeProps, priorityLabel } from "./badgeStatus";
 export { Input } from "./Input";
 export type { InputProps } from "./Input";
 export { Select } from "./Select";

@@ -5,6 +5,7 @@ import { useUiStore } from "@/shared/stores/uiStore";
 import { useCurrentUser } from "@/features/auth/api/authApi";
 import { useActiveSemester } from "@/shared/api/semestersApi";
 import { useActiveEnrollmentWindow } from "@/shared/api/windowsApi";
+import { useNow } from "@/shared/lib/useNow";
 import { useOfferings } from "@/features/catalog/api/offeringsApi";
 import { useMyRequests } from "@/features/enrollment/api/requestsApi";
 import {
@@ -122,7 +123,7 @@ function WindowHero({
   startsAt?: string;
   endsAt?: string;
 }) {
-  const now = Date.now();
+  const now = useNow();
   const isOpen =
     startsAt !== undefined &&
     endsAt !== undefined &&
