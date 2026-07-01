@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchClient } from "@/shared/api/client";
-import { errorMessage } from "@/shared/lib/apiErrors";
-import { toast } from "@/shared/stores/toastStore";
+import { notify } from "@/shared/lib/notify";
 
 // ---------------------------------------------------------------------------
 // Types co-located with this feature (the shared types module is not edited).
@@ -129,8 +128,8 @@ export function useCreateReport(semesterId: string) {
       fetchClient<ReportExport>("/reports", { method: "POST", body: input }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: reportKeys.list(semesterId) });
-      toast.success("Report requested. It will be ready shortly.");
+      notify.success("Report requested. It will be ready shortly.");
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(error),
   });
 }
