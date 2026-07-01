@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 // Mock the data layer so the page renders without a QueryClient/network.
@@ -150,5 +150,29 @@ describe("StudentsPage", () => {
     render(<StudentsPage />);
 
     expect(screen.getByRole("alert")).toHaveTextContent("network down");
+  });
+
+  it("opens the student detail dialog into Overview/Academic records tabs (FR-005)", async () => {
+    const user = userEvent.setup();
+    mockUseStudents.mockReturnValue(
+      asStudentsQuery([
+        student({ id: "s1", fullName: "Ada Lovelace", documentNumber: "1000000001" }),
+      ]),
+    );
+
+    render(<StudentsPage />);
+
+    await user.click(screen.getByText("Ada Lovelace"));
+
+    const dialog = within(screen.getByRole("dialog"));
+    expect(
+      dialog.getByRole("tab", { name: "Overview", selected: true }),
+    ).toBeInTheDocument();
+    expect(dialog.getByText("1000000001")).toBeInTheDocument();
+    expect(dialog.queryByText("No records yet.")).not.toBeInTheDocument();
+
+    await user.click(dialog.getByRole("tab", { name: "Academic records" }));
+
+    expect(await dialog.findByText("No records yet.")).toBeInTheDocument();
   });
 });
