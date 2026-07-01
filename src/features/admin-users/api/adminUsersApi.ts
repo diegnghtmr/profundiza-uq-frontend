@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchClient } from "@/shared/api/client";
-import { errorMessage } from "@/shared/lib/apiErrors";
-import { toast } from "@/shared/stores/toastStore";
+import { notify } from "@/shared/lib/notify";
 
 // ---------------------------------------------------------------------------
 // Types co-located with this feature (the shared types module is not edited).
@@ -101,9 +100,9 @@ export function useCreateAdmin() {
       fetchClient<AdminUser>("/admin/users", { method: "POST", body: input }),
     onSuccess: (admin) => {
       qc.invalidateQueries({ queryKey: adminUserKeys.all });
-      toast.success(`${admin.fullName} was added.`);
+      notify.success(`${admin.fullName} was added.`);
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(error),
   });
 }
 
@@ -117,8 +116,8 @@ export function useUpdateAdmin() {
       }),
     onSuccess: (admin) => {
       qc.invalidateQueries({ queryKey: adminUserKeys.all });
-      toast.success(`${admin.fullName} was updated.`);
+      notify.success(`${admin.fullName} was updated.`);
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(error),
   });
 }
