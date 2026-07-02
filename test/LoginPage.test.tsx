@@ -14,13 +14,24 @@ vi.mock("@/features/auth/api/authApi", async (importOriginal) => {
   return { ...actual, startLogin: vi.fn(), verifyLogin: vi.fn() };
 });
 
+// The real fetchClient auto-captures a fresh CSRF token as a side effect of
+// the verifyLogin network call itself (before enter() ever runs), so mock
+// this seam to assert setCsrfToken(null) runs at the right point in the
+// flow — once, at the START of a fresh attempt — and is never called again
+// after verifyLogin resolves (that would erase the just-issued token).
+vi.mock("@/shared/api/client", () => ({
+  setCsrfToken: vi.fn(),
+}));
+
 import { authKeys, startLogin, verifyLogin } from "@/features/auth/api/authApi";
+import { setCsrfToken } from "@/shared/api/client";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { useUiStore } from "@/shared/stores/uiStore";
 import type { CurrentUser } from "@/shared/api/types";
 
 const mockStartLogin = vi.mocked(startLogin);
 const mockVerifyLogin = vi.mocked(verifyLogin);
+const mockSetCsrfToken = vi.mocked(setCsrfToken);
 
 function renderLoginPage(client: QueryClient) {
   const Wrapper = ({ children }: { children: ReactNode }) =>
@@ -90,5 +101,44 @@ describe("LoginPage enter()", () => {
     expect(client.getQueryData(authKeys.me)).toEqual(nextUser);
     expect(useUiStore.getState().draftGroupIds).toEqual([]);
     expect(useUiStore.getState().selectedSemesterId).toBe("");
+  });
+
+  it("clears the stale CSRF token before starting a fresh attempt, and never clears the newly issued one in enter()", async () => {
+    const user = userEvent.setup();
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    mockStartLogin.mockResolvedValueOnce({
+      delivery: "EMAIL_SENT",
+      expiresInSeconds: 300,
+    });
+    mockVerifyLogin.mockResolvedValueOnce({
+      user: nextUser,
+      csrfToken: "csrf-token",
+    });
+
+    renderLoginPage(client);
+
+    await user.type(
+      screen.getByLabelText("Institutional email"),
+      "next@uq.edu.co",
+    );
+    await user.click(screen.getByRole("button", { name: "Send code" }));
+
+    // Cleared once, up front, before the network call that will (via the
+    // real fetchClient) auto-capture the new session's token.
+    await waitFor(() => expect(mockStartLogin).toHaveBeenCalled());
+    expect(mockSetCsrfToken).toHaveBeenCalledWith(null);
+    expect(mockSetCsrfToken).toHaveBeenCalledTimes(1);
+
+    await user.type(screen.getByLabelText(/One-time code sent to/), "123456");
+    await user.click(screen.getByRole("button", { name: "Verify" }));
+
+    await waitFor(() => expect(screen.getByText("Home page")).toBeInTheDocument());
+
+    // enter() runs AFTER verifyLogin already resolved (and, in real usage,
+    // already auto-captured the fresh token) — it must not clear it again.
+    expect(mockSetCsrfToken).toHaveBeenCalledTimes(1);
   });
 });

@@ -8,6 +8,7 @@ import { Button, Card, Input, Spinner } from "@/shared/components/ui";
 import { Logo } from "@/shared/components/layout/Logo";
 import { ROLE_LANDING } from "@/shared/config/navigation";
 import { errorMessage } from "@/shared/lib/apiErrors";
+import { setCsrfToken } from "@/shared/api/client";
 import { useUiStore } from "@/shared/stores/uiStore";
 import type { CurrentUser } from "@/shared/api/types";
 import { authKeys, startLogin, verifyLogin } from "../api/authApi";
@@ -55,6 +56,13 @@ export function LoginPage() {
 
   async function sendCode(targetEmail: string) {
     setFormError(null);
+    // Wipe any stale CSRF token from a previous session on this device
+    // BEFORE the first network call of this fresh attempt. This must happen
+    // here, not in enter(): fetchClient auto-captures the new session's CSRF
+    // token as a side effect of the verifyLogin response itself, which
+    // resolves before enter() ever runs — clearing it there would erase the
+    // token we just legitimately received.
+    setCsrfToken(null);
     await startLogin(targetEmail);
     setEmail(targetEmail);
     setStep("code");

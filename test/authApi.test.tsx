@@ -21,13 +21,14 @@ vi.mock("@/shared/lib/notify", () => ({
   },
 }));
 
-import { fetchClient } from "@/shared/api/client";
+import { fetchClient, setCsrfToken } from "@/shared/api/client";
 import { notify } from "@/shared/lib/notify";
 import { useLogout } from "@/features/auth/api/authApi";
 import { useUiStore } from "@/shared/stores/uiStore";
 
 const mockFetch = vi.mocked(fetchClient);
 const mockNotify = vi.mocked(notify);
+const mockSetCsrfToken = vi.mocked(setCsrfToken);
 
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({
@@ -65,5 +66,6 @@ describe("useLogout", () => {
 
     expect(useUiStore.getState().draftGroupIds).toEqual([]);
     expect(useUiStore.getState().selectedSemesterId).toBe("");
+    expect(mockSetCsrfToken).toHaveBeenCalledWith(null);
   });
 });

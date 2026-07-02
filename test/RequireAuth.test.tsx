@@ -10,18 +10,27 @@ vi.mock("@/features/auth/api/authApi", () => ({
   useCurrentUser: vi.fn(),
 }));
 
+// Mock the CSRF seam so we can assert it is wiped on session loss too, same
+// as an explicit logout.
+vi.mock("@/shared/api/client", () => ({
+  setCsrfToken: vi.fn(),
+}));
+
 import { useCurrentUser } from "@/features/auth/api/authApi";
+import { setCsrfToken } from "@/shared/api/client";
 import { RequireAuth } from "@/app/RequireAuth";
 import { useUiStore } from "@/shared/stores/uiStore";
 
 const mockUseCurrentUser = vi.mocked(useCurrentUser);
+const mockSetCsrfToken = vi.mocked(setCsrfToken);
 
-function renderWithRouter(client: QueryClient) {
-  const Wrapper = ({ children }: { children: ReactNode }) =>
-    createElement(QueryClientProvider, { client }, children);
+function Wrapper({ client, children }: { client: QueryClient; children: ReactNode }) {
+  return createElement(QueryClientProvider, { client }, children);
+}
 
-  return render(
-    <Wrapper>
+function buildUi(client: QueryClient) {
+  return (
+    <Wrapper client={client}>
       <MemoryRouter initialEntries={["/app/home"]}>
         <Routes>
           <Route
@@ -35,13 +44,18 @@ function renderWithRouter(client: QueryClient) {
           <Route path="/login" element={<div>Login page</div>} />
         </Routes>
       </MemoryRouter>
-    </Wrapper>,
+    </Wrapper>
   );
+}
+
+function renderWithRouter(client: QueryClient) {
+  return render(buildUi(client));
 }
 
 describe("RequireAuth", () => {
   beforeEach(() => {
     mockUseCurrentUser.mockReset();
+    mockSetCsrfToken.mockReset();
     useUiStore.getState().resetSession();
   });
 
@@ -84,5 +98,52 @@ describe("RequireAuth", () => {
     expect(client.getQueryData(["requests", "mine", "sem-prev-user"])).toBeUndefined();
     expect(useUiStore.getState().draftGroupIds).toEqual([]);
     expect(useUiStore.getState().selectedSemesterId).toBe("");
+    expect(mockSetCsrfToken).toHaveBeenCalledWith(null);
+  });
+
+  it("runs the session-loss cleanup exactly once even if sessionLost toggles before the redirect completes", async () => {
+    // Simulates the real race: qc.clear() removes the /me query, the
+    // useCurrentUser observer in this same component rebuilds it on the next
+    // render (briefly isLoading), and if the rebuilt fetch fails again we're
+    // back to isError — sessionLost flips true -> false -> true before
+    // <Navigate> finally unmounts this component.
+    mockUseCurrentUser
+      .mockReturnValueOnce({
+        data: undefined,
+        isLoading: false,
+        isError: true,
+      } as ReturnType<typeof useCurrentUser>)
+      .mockReturnValueOnce({
+        data: undefined,
+        isLoading: true,
+        isError: false,
+      } as ReturnType<typeof useCurrentUser>)
+      .mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        isError: true,
+      } as ReturnType<typeof useCurrentUser>);
+
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const clearSpy = vi.spyOn(client, "clear");
+    const resetSessionSpy = vi.spyOn(useUiStore.getState(), "resetSession");
+
+    const { rerender } = renderWithRouter(client);
+    // Force two more renders of the SAME component tree (same root type at
+    // every position, so React reconciles in place and RequireAuth's
+    // handledRef survives) so useCurrentUser() is invoked again, walking
+    // through the queued isLoading/isError sequence above.
+    rerender(buildUi(client));
+    rerender(buildUi(client));
+
+    await waitFor(() => expect(screen.getByText("Login page")).toBeInTheDocument());
+
+    expect(clearSpy).toHaveBeenCalledTimes(1);
+    expect(resetSessionSpy).toHaveBeenCalledTimes(1);
+    expect(mockSetCsrfToken).toHaveBeenCalledTimes(1);
+
+    resetSessionSpy.mockRestore();
   });
 });
