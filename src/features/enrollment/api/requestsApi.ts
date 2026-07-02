@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchClient } from "@/shared/api/client";
 import type {
@@ -37,23 +38,39 @@ export interface SubmitBatchInput {
 }
 
 /**
- * Submit up to four requests in one shot. An `Idempotency-Key` (a fresh UUID per
- * submit) makes a retried request a no-op on the backend. Invalidates the
+ * Submit up to four requests in one shot. The `Idempotency-Key` is stable
+ * across retries of the *same* logical submit (e.g. the user retries after a
+ * lost/timed-out response) so the backend's dedup actually catches the exact
+ * retry case, instead of minting a new key every `.mutate()` call and
+ * defeating double-submit protection. The key only rotates after a confirmed
+ * success, so the next distinct submit gets a fresh one. Invalidates the
  * student's request list so "My Requests" reflects the new submissions.
  */
 export function useSubmitEnrollmentBatch() {
   const qc = useQueryClient();
+  // Lazily create the key on first render only, guarded so crypto.randomUUID()
+  // is not re-invoked on every re-render (same idiom as useNow's useState
+  // lazy initializer, adapted for a ref since this value doesn't need to
+  // trigger a re-render when it changes).
+  const idempotencyKeyRef = useRef<string>(undefined);
+  if (idempotencyKeyRef.current === undefined) {
+    idempotencyKeyRef.current = crypto.randomUUID();
+  }
+
   return useMutation({
     mutationFn: ({ semesterId, offeringGroupIds }: SubmitBatchInput) =>
       fetchClient<EnrollmentRequestBatchResult>("/enrollment-requests/batch", {
         method: "POST",
-        headers: { "Idempotency-Key": crypto.randomUUID() },
+        headers: { "Idempotency-Key": idempotencyKeyRef.current! },
         body: {
           semesterId,
           items: offeringGroupIds.map((offeringGroupId) => ({ offeringGroupId })),
         },
       }),
     onSuccess: () => {
+      // The submit is confirmed; rotate the key so the next distinct submit
+      // does not accidentally collide with (or get deduped against) this one.
+      idempotencyKeyRef.current = crypto.randomUUID();
       qc.invalidateQueries({ queryKey: requestsKeys.all });
     },
     onError: (error) => notify.error(error),
