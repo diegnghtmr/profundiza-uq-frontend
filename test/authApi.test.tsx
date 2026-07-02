@@ -24,6 +24,7 @@ vi.mock("@/shared/lib/notify", () => ({
 import { fetchClient } from "@/shared/api/client";
 import { notify } from "@/shared/lib/notify";
 import { useLogout } from "@/features/auth/api/authApi";
+import { useUiStore } from "@/shared/stores/uiStore";
 
 const mockFetch = vi.mocked(fetchClient);
 const mockNotify = vi.mocked(notify);
@@ -38,6 +39,7 @@ function wrapper({ children }: { children: ReactNode }) {
 beforeEach(() => {
   mockFetch.mockReset();
   vi.clearAllMocks();
+  useUiStore.getState().resetSession();
 });
 
 describe("useLogout", () => {
@@ -49,5 +51,19 @@ describe("useLogout", () => {
     result.current.mutate();
 
     await waitFor(() => expect(mockNotify.error).toHaveBeenCalledWith(error));
+  });
+
+  it("resets the uiStore draft on success, so the next user on the device starts clean", async () => {
+    mockFetch.mockResolvedValueOnce(undefined);
+    useUiStore.getState().toggleDraftGroup("prev-user-group");
+    useUiStore.getState().setSelectedSemesterId("sem-prev-user");
+
+    const { result } = renderHook(() => useLogout(), { wrapper });
+    result.current.mutate();
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(useUiStore.getState().draftGroupIds).toEqual([]);
+    expect(useUiStore.getState().selectedSemesterId).toBe("");
   });
 });

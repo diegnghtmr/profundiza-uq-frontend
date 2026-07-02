@@ -1,7 +1,9 @@
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { Navigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Spinner } from "@/shared/components/ui";
 import { useCurrentUser } from "@/features/auth/api/authApi";
+import { useUiStore } from "@/shared/stores/uiStore";
 
 /**
  * Gates the authenticated app on the resolved `GET /me` user. While the session
@@ -9,6 +11,19 @@ import { useCurrentUser } from "@/features/auth/api/authApi";
  */
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { data: user, isLoading, isError } = useCurrentUser();
+  const qc = useQueryClient();
+  const sessionLost = !isLoading && (isError || !user);
+
+  useEffect(() => {
+    if (!sessionLost) return;
+    // Implicit session loss (expired cookie, 401 on /me, or a stale tab left
+    // open after someone else signs in) must wipe the previous user's cached
+    // requests/notifications AND their enrollment draft, exactly like an
+    // explicit logout — otherwise a shared university computer leaks state
+    // to the next student.
+    qc.clear();
+    useUiStore.getState().resetSession();
+  }, [sessionLost, qc]);
 
   if (isLoading) {
     return (
@@ -18,7 +33,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     );
   }
 
-  if (isError || !user) return <Navigate to="/login" replace />;
+  if (sessionLost) return <Navigate to="/login" replace />;
 
   return <>{children}</>;
 }

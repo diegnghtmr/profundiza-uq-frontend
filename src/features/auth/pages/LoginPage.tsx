@@ -8,6 +8,7 @@ import { Button, Card, Input, Spinner } from "@/shared/components/ui";
 import { Logo } from "@/shared/components/layout/Logo";
 import { ROLE_LANDING } from "@/shared/config/navigation";
 import { errorMessage } from "@/shared/lib/apiErrors";
+import { useUiStore } from "@/shared/stores/uiStore";
 import type { CurrentUser } from "@/shared/api/types";
 import { authKeys, startLogin, verifyLogin } from "../api/authApi";
 
@@ -78,6 +79,12 @@ export function LoginPage() {
   }
 
   function enter(user: CurrentUser) {
+    // A fresh sign-in must start clean: wipe any stale cached data and draft
+    // state left behind by a previous session on this device (implicit
+    // session loss without an explicit logout) before seeding the new
+    // identity, so the next user never inherits the prior one's state.
+    queryClient.clear();
+    useUiStore.getState().resetSession();
     // Seed the /me cache so the route guard resolves immediately after login.
     queryClient.setQueryData(authKeys.me, user);
     navigate(ROLE_LANDING[user.role]);
