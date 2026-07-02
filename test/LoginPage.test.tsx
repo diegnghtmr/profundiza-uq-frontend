@@ -63,7 +63,7 @@ describe("LoginPage enter()", () => {
     useUiStore.getState().setSelectedSemesterId("sem-prev-user");
 
     mockStartLogin.mockResolvedValueOnce({
-      delivery: "email",
+      delivery: "EMAIL_SENT",
       expiresInSeconds: 300,
     });
     mockVerifyLogin.mockResolvedValueOnce({
