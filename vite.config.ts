@@ -12,51 +12,17 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
-  build: {
-    rollupOptions: {
-      output: {
-        // Split vendored libraries into cacheable chunks so the entry stays
-        // small and a page-level change never re-downloads React et al. Match
-        // the specific libraries before the generic react rule.
-        manualChunks(id) {
-          if (!id.includes("node_modules")) return undefined;
-          if (id.includes("react-router")) return "vendor-router";
-          if (id.includes("@tanstack")) return "vendor-query";
-          if (
-            id.includes("react-hook-form") ||
-            id.includes("@hookform") ||
-            id.includes("/zod/")
-          ) {
-            return "vendor-forms";
-          }
-          if (id.includes("@radix-ui")) return "vendor-radix";
-          if (
-            id.includes("recharts") ||
-            id.includes("/d3-") ||
-            id.includes("victory-vendor") ||
-            id.includes("/react-is/")
-          ) {
-            return "vendor-recharts";
-          }
-          if (
-            id.includes("/motion/") ||
-            id.includes("/motion-dom/") ||
-            id.includes("/motion-utils/")
-          ) {
-            return "vendor-motion";
-          }
-          if (
-            id.includes("/react-dom/") ||
-            id.includes("/react/") ||
-            id.includes("/scheduler/")
-          ) {
-            return "vendor-react";
-          }
-          return "vendor";
-        },
-      },
-    },
-  },
+  // Vendor code is left to Vite/Rollup's automatic chunking. A hand-rolled
+  // manualChunks() split (React / motion / router / … each into its own chunk)
+  // produced a circular chunk dependency (vendor <-> vendor-react) whose
+  // cross-chunk top-level init order was undefined at runtime — white-screening
+  // the PRODUCTION build with "Cannot read properties of undefined (reading
+  // 'Component')" (motion/react touching React before its chunk initialized)
+  // and, once motion was folded in, "Cannot access '_' before initialization".
+  // Only the Rollup bundle reproduced it; the dev server and Vitest use native
+  // ESM with no chunking. Automatic chunking orders modules by the real
+  // dependency graph, so it cannot create that cycle. Route-level splitting is
+  // still handled by the lazy() imports in router.tsx.
   server: {
     // Proxy the API through the dev server so the session cookie is same-origin
     // (no CORS, no SameSite headaches). Override the target with a full
