@@ -1,8 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchClient } from "@/shared/api/client";
 import type { AcademicShift, Student, UserStatus } from "@/shared/api/types";
-import { errorMessage } from "@/shared/lib/apiErrors";
-import { toast } from "@/shared/stores/toastStore";
+import { notify } from "@/shared/lib/notify";
 
 // ---------------------------------------------------------------------------
 // Types co-located with this feature (the shared types module is not edited).
@@ -120,9 +119,9 @@ export function useCreateStudent() {
       fetchClient<Student>("/students", { method: "POST", body: input }),
     onSuccess: (student) => {
       qc.invalidateQueries({ queryKey: studentKeys.all });
-      toast.success(`${student.fullName} was added.`);
+      notify.success(`${student.fullName} was added.`);
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(error),
   });
 }
 
@@ -136,9 +135,9 @@ export function useCreateRecord(studentId: string) {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: studentKeys.records(studentId) });
-      toast.success("Academic record added.");
+      notify.success("Academic record added.");
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(error),
   });
 }
 
@@ -155,13 +154,13 @@ export function useImportStudents() {
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: studentKeys.all });
       if (result.rejectedRows > 0) {
-        toast.info(
+        notify.info(
           `Imported ${result.acceptedRows}, rejected ${result.rejectedRows}.`,
         );
       } else {
-        toast.success(`Imported ${result.acceptedRows} students.`);
+        notify.success(`Imported ${result.acceptedRows} students.`);
       }
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(error),
   });
 }

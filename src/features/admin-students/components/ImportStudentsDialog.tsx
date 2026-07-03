@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button, Dialog, Spinner, Textarea } from "@/shared/components/ui";
 import type { AcademicShift } from "@/shared/api/types";
 import { useImportStudents, type CreateStudentInput } from "../api/studentsApi";
@@ -65,9 +65,13 @@ export function ImportStudentsDialog({
   const importStudents = useImportStudents();
   const [text, setText] = useState("");
 
-  useEffect(() => {
+  // Clear the pasted CSV each time the dialog opens. Done during render (React's
+  // "adjust state on prop change" pattern) rather than in an effect.
+  const [wasOpen, setWasOpen] = useState(false);
+  if (wasOpen !== open) {
+    setWasOpen(open);
     if (open) setText("");
-  }, [open]);
+  }
 
   const { rows, errors } = parseRows(text);
   const canSubmit = rows.length > 0 && errors.length === 0;

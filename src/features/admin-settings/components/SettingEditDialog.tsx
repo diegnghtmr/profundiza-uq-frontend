@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Button,
   Dialog,
   Input,
-  SegmentedControl,
   Spinner,
+  Switch,
   Textarea,
 } from "@/shared/components/ui";
 import {
@@ -23,11 +23,6 @@ function kindOf(value: SettingValue): ValueKind {
   if (typeof value === "string") return "string";
   return "json";
 }
-
-const BOOLEAN_OPTIONS = [
-  { value: "true", label: "True" },
-  { value: "false", label: "False" },
-] as const;
 
 /**
  * Edits a single global setting. The value is JSONB, so the control adapts to
@@ -53,13 +48,21 @@ export function SettingEditDialog({
   const [reason, setReason] = useState("");
   const [valueError, setValueError] = useState<string | null>(null);
 
-  // Reset the form whenever a different setting opens the dialog.
-  useEffect(() => {
-    if (!open || !setting) return;
-    setReason("");
-    setValueError(null);
-    setDraft(initialDraft(setting.value, kind));
-  }, [open, setting, kind]);
+  // Reset the form whenever a different setting opens the dialog. Done during
+  // render (React's "adjust state on prop change" pattern) instead of an effect.
+  const [sync, setSync] = useState<{
+    open: boolean;
+    setting: GlobalSetting | null;
+    kind: ValueKind;
+  }>({ open: false, setting: null, kind: "json" });
+  if (sync.open !== open || sync.setting !== setting || sync.kind !== kind) {
+    setSync({ open, setting, kind });
+    if (open && setting) {
+      setReason("");
+      setValueError(null);
+      setDraft(initialDraft(setting.value, kind));
+    }
+  }
 
   const reasonValid = reason.trim().length >= MIN_REASON_LENGTH;
 
@@ -127,14 +130,11 @@ export function SettingEditDialog({
     >
       <div className="flex flex-col gap-5">
         {kind === "boolean" ? (
-          <div className="flex flex-col gap-2">
-            <span className="text-body-sm font-medium text-graphite">Value</span>
-            <SegmentedControl
-              options={BOOLEAN_OPTIONS}
-              value={draft === "true" ? "true" : "false"}
-              onChange={setDraft}
-            />
-          </div>
+          <Switch
+            checked={draft === "true"}
+            onCheckedChange={(checked) => setDraft(checked ? "true" : "false")}
+            label="Value"
+          />
         ) : kind === "number" ? (
           <Input
             label="Value"

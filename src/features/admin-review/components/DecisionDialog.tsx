@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button, Dialog, Spinner, Textarea } from "@/shared/components/ui";
 import type { EnrollmentDecisionType } from "@/shared/api/types";
 
@@ -34,9 +34,16 @@ export function DecisionDialog({
 }) {
   const [reason, setReason] = useState("");
 
-  useEffect(() => {
+  // Clear the reason whenever the dialog opens or switches decision type. Done
+  // during render (React's "adjust state on prop change" pattern), not an effect.
+  const [sync, setSync] = useState<{
+    open: boolean;
+    decisionType: EnrollmentDecisionType | null;
+  }>({ open: false, decisionType: null });
+  if (sync.open !== open || sync.decisionType !== decisionType) {
+    setSync({ open, decisionType });
     if (open) setReason("");
-  }, [open, decisionType]);
+  }
 
   const valid = reason.trim().length >= MIN_REASON;
   const title = decisionType ? DECISION_TITLES[decisionType] : "Decision";

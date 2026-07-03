@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { Button, Card, Input, SegmentedControl, Spinner } from "@/shared/components/ui";
+import {
+  Button,
+  Card,
+  DataState,
+  EmptyState,
+  Input,
+  SegmentedControl,
+} from "@/shared/components/ui";
 import { cn } from "@/shared/lib/cn";
 import type { AcademicShift, Student, UserStatus } from "@/shared/api/types";
 import { useStudents, type StudentFilters } from "../api/studentsApi";
@@ -7,6 +14,7 @@ import { AddStudentDialog } from "../components/AddStudentDialog";
 import { ImportStudentsDialog } from "../components/ImportStudentsDialog";
 import { StudentDetailDialog } from "../components/StudentDetailDialog";
 import { ShiftBadge, StudentStatusBadge } from "../components/studentBadges";
+import { StudentsTableSkeleton } from "../components/StudentsTableSkeleton";
 
 type ShiftFilter = AcademicShift | "ALL";
 type StatusFilter = UserStatus | "ALL";
@@ -41,8 +49,9 @@ export function StudentsPage() {
     status: status === "ALL" ? "" : status,
   };
 
-  const { data, isLoading, isError, refetch } = useStudents(filters);
+  const { data, isLoading, isError, error, refetch } = useStudents(filters);
   const students = data?.items ?? [];
+  const filtersActive = search.trim() !== "" || shift !== "ALL" || status !== "ALL";
 
   return (
     <section className="flex flex-col gap-8">
@@ -85,68 +94,74 @@ export function StudentsPage() {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex justify-center py-20">
-          <Spinner />
-        </div>
-      ) : isError ? (
-        <Card className="flex flex-col items-start gap-4 py-8">
-          <p className="text-body text-graphite">Could not load students.</p>
-          <Button variant="soft" onClick={() => refetch()}>
-            Try again
-          </Button>
-        </Card>
-      ) : students.length === 0 ? (
-        <Card className="py-10 text-center text-body-sm text-slate">
-          No students match the current filters.
-        </Card>
-      ) : (
-        <Card className="overflow-hidden p-0">
-          <table className="w-full border-collapse text-left">
-            <thead>
-              <tr className="border-b border-ink-black/[0.06] text-caption uppercase tracking-wide text-slate">
-                <Th>Student</Th>
-                <Th className="w-40">Document</Th>
-                <Th className="w-28">Shift</Th>
-                <Th className="w-28">Completed</Th>
-                <Th className="w-28">Status</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {students.map((student) => (
-                <tr
-                  key={student.id}
-                  onClick={() => setSelected(student)}
-                  className="cursor-pointer border-b border-ink-black/[0.04] transition-colors last:border-0 hover:bg-ink-black/[0.02]"
-                >
-                  <Td>
-                    <div className="flex flex-col">
-                      <span className="text-body-sm font-medium text-ink-black">
-                        {student.fullName}
-                      </span>
-                      <span className="text-caption text-slate">
-                        {student.institutionalEmail}
-                      </span>
-                    </div>
-                  </Td>
-                  <Td className="tabular-nums text-graphite">
-                    {student.documentNumber}
-                  </Td>
-                  <Td>
-                    <ShiftBadge shift={student.academicShift} />
-                  </Td>
-                  <Td className="tabular-nums text-graphite">
-                    {student.completedProfessionalElectivesCount ?? 0} / 4
-                  </Td>
-                  <Td>
-                    <StudentStatusBadge status={student.status} />
-                  </Td>
+      <DataState
+        isLoading={isLoading}
+        isError={isError}
+        isEmpty={!filtersActive && students.length === 0}
+        error={error}
+        onRetry={() => void refetch()}
+        skeleton={<StudentsTableSkeleton />}
+        emptyState={
+          <EmptyState
+            icon="user"
+            title="No students yet"
+            description="Add students manually or import them in bulk to get started."
+            action={<Button onClick={() => setAddOpen(true)}>+ Add student</Button>}
+          />
+        }
+      >
+        {students.length === 0 ? (
+          <Card className="py-10 text-center text-body-sm text-slate">
+            No students match the current filters.
+          </Card>
+        ) : (
+          <Card className="overflow-hidden p-0">
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="border-b border-ink-black/[0.06] text-caption uppercase tracking-wide text-slate">
+                  <Th>Student</Th>
+                  <Th className="w-40">Document</Th>
+                  <Th className="w-28">Shift</Th>
+                  <Th className="w-28">Completed</Th>
+                  <Th className="w-28">Status</Th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-      )}
+              </thead>
+              <tbody>
+                {students.map((student) => (
+                  <tr
+                    key={student.id}
+                    onClick={() => setSelected(student)}
+                    className="cursor-pointer border-b border-ink-black/[0.04] transition-colors last:border-0 hover:bg-ink-black/[0.02]"
+                  >
+                    <Td>
+                      <div className="flex flex-col">
+                        <span className="text-body-sm font-medium text-ink-black">
+                          {student.fullName}
+                        </span>
+                        <span className="text-caption text-slate">
+                          {student.institutionalEmail}
+                        </span>
+                      </div>
+                    </Td>
+                    <Td className="tabular-nums text-graphite">
+                      {student.documentNumber}
+                    </Td>
+                    <Td>
+                      <ShiftBadge shift={student.academicShift} />
+                    </Td>
+                    <Td className="tabular-nums text-graphite">
+                      {student.completedProfessionalElectivesCount ?? 0} / 4
+                    </Td>
+                    <Td>
+                      <StudentStatusBadge status={student.status} />
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        )}
+      </DataState>
 
       <AddStudentDialog open={addOpen} onOpenChange={setAddOpen} />
       <ImportStudentsDialog open={importOpen} onOpenChange={setImportOpen} />

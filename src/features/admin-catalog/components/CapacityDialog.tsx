@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button, Dialog, Input, Spinner, Textarea } from "@/shared/components/ui";
 import { useAdjustCapacity } from "../api/catalogAdminApi";
 import type { OfferingGroupSummary } from "@/shared/api/types";
@@ -29,12 +29,20 @@ export function CapacityDialog({
   const [capacity, setCapacity] = useState("");
   const [reason, setReason] = useState("");
 
-  useEffect(() => {
+  // Prefill capacity and clear the reason whenever the dialog opens or targets a
+  // different group. Done during render (React's "adjust state on prop change"
+  // pattern) instead of an effect, so the fields never flash a stale value.
+  const [sync, setSync] = useState<{
+    open: boolean;
+    group: OfferingGroupSummary | null;
+  }>({ open: false, group: null });
+  if (sync.open !== open || sync.group !== group) {
+    setSync({ open, group });
     if (open && group) {
       setCapacity(String(group.capacity));
       setReason("");
     }
-  }, [open, group]);
+  }
 
   const accepted = group?.acceptedCount ?? 0;
   const parsed = Number(capacity);

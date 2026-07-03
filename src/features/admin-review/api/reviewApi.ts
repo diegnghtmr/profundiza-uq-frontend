@@ -6,8 +6,7 @@ import type {
   CreateEnrollmentDecisionRequest,
   EnrollmentDecisionResult,
 } from "@/shared/api/types";
-import { errorMessage } from "@/shared/lib/apiErrors";
-import { toast } from "@/shared/stores/toastStore";
+import { notify } from "@/shared/lib/notify";
 
 export const reviewKeys = {
   all: ["review-queue"] as const,
@@ -49,6 +48,6 @@ export function useSubmitDecision() {
     onSuccess: (_result, variables) => {
       qc.invalidateQueries({ queryKey: reviewKeys.list(variables.semesterId) });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(error),
   });
 }

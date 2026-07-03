@@ -3,7 +3,8 @@ import {
   Input,
   SegmentedControl,
   FilterPill,
-  Spinner,
+  DataState,
+  EmptyState,
 } from "@/shared/components/ui";
 import { useUiStore } from "@/shared/stores/uiStore";
 import type { AcademicShift, ElectiveOfferingSummary } from "@/shared/api/types";
@@ -11,6 +12,7 @@ import { useMyRequests } from "@/features/enrollment/api/requestsApi";
 import { ACTIVE_REQUEST_STATUSES } from "@/shared/lib/requestStats";
 import { useOfferings, deriveAreas } from "../api/offeringsApi";
 import { OfferingCard } from "../components/OfferingCard";
+import { OfferingsSkeleton } from "../components/OfferingsSkeleton";
 import { DraftBar } from "../components/DraftBar";
 
 type ShiftFilter = "ALL" | AcademicShift;
@@ -24,7 +26,13 @@ const SHIFT_OPTIONS = [
 /** Container: owns filter state and derives the visible offering list. */
 export function OfferingsPage() {
   const selectedSemesterId = useUiStore((s) => s.selectedSemesterId);
-  const { data: offerings, isLoading } = useOfferings(selectedSemesterId);
+  const {
+    data: offerings,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useOfferings(selectedSemesterId);
   const { data: myRequests } = useMyRequests(selectedSemesterId);
 
   // Groups the student already holds an active request for — rendered as
@@ -93,29 +101,41 @@ export function OfferingsPage() {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex justify-center py-20">
-          <Spinner />
-        </div>
-      ) : visible.length === 0 ? (
-        <p className="py-16 text-center text-body text-slate">
-          No offerings match your filters.
-        </p>
-      ) : (
-        <div className="grid grid-cols-1 gap-6">
-          {visible.map((offering) => (
-            <OfferingCard
-              key={offering.id}
-              offering={offering}
-              requestedGroupIds={requestedGroupIds}
-              onLimitReached={() => {
-                setLimitWarning(true);
-                window.setTimeout(() => setLimitWarning(false), 4000);
-              }}
-            />
-          ))}
-        </div>
-      )}
+      <DataState
+        isLoading={isLoading}
+        isError={isError}
+        isEmpty={(offerings?.length ?? 0) === 0}
+        error={error}
+        onRetry={() => void refetch()}
+        skeleton={<OfferingsSkeleton />}
+        emptyState={
+          <EmptyState
+            icon="search"
+            title="No offerings published yet"
+            description="Offerings for this semester haven't been published. Check back soon."
+          />
+        }
+      >
+        {visible.length === 0 ? (
+          <p className="py-16 text-center text-body text-slate">
+            No offerings match your filters.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-6">
+            {visible.map((offering) => (
+              <OfferingCard
+                key={offering.id}
+                offering={offering}
+                requestedGroupIds={requestedGroupIds}
+                onLimitReached={() => {
+                  setLimitWarning(true);
+                  window.setTimeout(() => setLimitWarning(false), 4000);
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </DataState>
 
       <DraftBar limitWarning={limitWarning} />
     </section>

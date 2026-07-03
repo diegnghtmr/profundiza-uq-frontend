@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 // Mock the data layer so the page renders without a QueryClient/network.
 // StudentsPage and its child dialogs consume every hook in this module.
@@ -45,12 +46,19 @@ function student(overrides: Partial<Student>): Student {
   };
 }
 
-function asStudentsQuery(items: Student[] | undefined, isLoading = false) {
+function asStudentsQuery(
+  items: Student[] | undefined,
+  {
+    isLoading = false,
+    isError = false,
+    error = undefined as unknown,
+  } = {},
+) {
   const data: StudentsPageData | undefined =
     items === undefined
       ? undefined
       : { items, page: 1, pageSize: 100, total: items.length };
-  return { data, isLoading, isError: false } as unknown as ReturnType<
+  return { data, isLoading, isError, error, refetch: vi.fn() } as unknown as ReturnType<
     typeof useStudents
   >;
 }
@@ -102,13 +110,84 @@ describe("StudentsPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows an empty state when no students match the filters", () => {
+  it("shows a no-data empty state when no students exist and no filters are active", () => {
     mockUseStudents.mockReturnValue(asStudentsQuery([]));
 
     render(<StudentsPage />);
 
+    expect(screen.getByText("No students yet")).toBeInTheDocument();
+    expect(
+      screen.queryByText("No students match the current filters."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the filtered-empty message when an active filter matches zero students", async () => {
+    mockUseStudents.mockReturnValue(asStudentsQuery([]));
+
+    render(<StudentsPage />);
+    await userEvent.click(screen.getByRole("tab", { name: "Day" }));
+
     expect(
       screen.getByText("No students match the current filters."),
     ).toBeInTheDocument();
+    expect(screen.queryByText("No students yet")).not.toBeInTheDocument();
+  });
+
+  it("renders a structure-aware skeleton instead of the spinner while students load", () => {
+    mockUseStudents.mockReturnValue(asStudentsQuery(undefined, { isLoading: true }));
+
+    const { container } = render(<StudentsPage />);
+
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(screen.queryByRole("status", { name: "Loading" })).not.toBeInTheDocument();
+  });
+
+  it("renders an inline error when the students query fails", () => {
+    mockUseStudents.mockReturnValue(
+      asStudentsQuery(undefined, { isError: true, error: new Error("network down") }),
+    );
+
+    render(<StudentsPage />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("network down");
+  });
+
+  it("opens the student detail dialog into Overview/Academic records tabs (FR-005)", async () => {
+    const user = userEvent.setup();
+    mockUseStudents.mockReturnValue(
+      asStudentsQuery([
+        student({ id: "s1", fullName: "Ada Lovelace", documentNumber: "1000000001" }),
+      ]),
+    );
+
+    render(<StudentsPage />);
+
+    await user.click(screen.getByText("Ada Lovelace"));
+
+    const dialog = within(screen.getByRole("dialog"));
+    expect(
+      dialog.getByRole("tab", { name: "Overview", selected: true }),
+    ).toBeInTheDocument();
+    expect(dialog.getByText("1000000001")).toBeInTheDocument();
+    expect(dialog.queryByText("No records yet.")).not.toBeInTheDocument();
+
+    await user.click(dialog.getByRole("tab", { name: "Academic records" }));
+
+    expect(await dialog.findByText("No records yet.")).toBeInTheDocument();
+  });
+
+  it("shows a section divider between the records list and the add-record form (Separator adoption)", async () => {
+    const user = userEvent.setup();
+    mockUseStudents.mockReturnValue(
+      asStudentsQuery([student({ id: "s1", fullName: "Ada Lovelace" })]),
+    );
+
+    render(<StudentsPage />);
+
+    await user.click(screen.getByText("Ada Lovelace"));
+    const dialog = within(screen.getByRole("dialog"));
+    await user.click(dialog.getByRole("tab", { name: "Academic records" }));
+
+    expect(await dialog.findByRole("separator")).toBeInTheDocument();
   });
 });

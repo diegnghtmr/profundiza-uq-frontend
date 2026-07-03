@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchClient } from "./client";
+import { useNow } from "@/shared/lib/useNow";
 import type { EnrollmentWindow, EnrollmentWindowsPage } from "./types";
 
 export const windowsKeys = {
@@ -35,9 +36,9 @@ export function useActiveEnrollmentWindow(
   semesterId: string,
 ): EnrollmentWindow | undefined {
   const { data } = useEnrollmentWindows(semesterId);
+  const now = useNow();
   if (!data) return undefined;
 
-  const now = Date.now();
   const active = data.filter((w) => w.status === "ACTIVE");
 
   const open = active.find(
