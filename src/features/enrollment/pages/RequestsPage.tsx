@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  AlertDialog,
   Button,
   Card,
-  Dialog,
   Spinner,
   StatusBadge,
   Badge,
@@ -128,30 +128,21 @@ export function RequestsPage() {
         </div>
       </DataState>
 
-      <Dialog
+      <AlertDialog
         open={toCancel !== null}
         onOpenChange={(open) => !open && setToCancel(null)}
         title="Cancel this request?"
         description="If you cancel, you lose your position in the queue. Re-submitting later places you at the end."
-        footer={
-          <>
-            <Button variant="soft" onClick={() => setToCancel(null)}>
-              Keep request
-            </Button>
-            <Button
-              variant="danger"
-              disabled={cancelMutation.isPending}
-              onClick={() => {
-                if (!toCancel) return;
-                cancelMutation.mutate(toCancel.id, {
-                  onSettled: () => setToCancel(null),
-                });
-              }}
-            >
-              {cancelMutation.isPending ? <Spinner /> : "Cancel request"}
-            </Button>
-          </>
-        }
+        tone="danger"
+        cancelLabel="Keep request"
+        confirmLabel={cancelMutation.isPending ? <Spinner /> : "Cancel request"}
+        confirmDisabled={cancelMutation.isPending}
+        onConfirm={() => {
+          if (!toCancel) return;
+          cancelMutation.mutate(toCancel.id, {
+            onSettled: () => setToCancel(null),
+          });
+        }}
       />
     </section>
   );

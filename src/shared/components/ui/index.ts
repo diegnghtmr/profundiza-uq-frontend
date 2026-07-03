@@ -34,3 +34,17 @@ export { Separator } from "./Separator";
 export type { SeparatorProps } from "./Separator";
 export { ScrollArea } from "./ScrollArea";
 export type { ScrollAreaProps } from "./ScrollArea";
+export {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "./DropdownMenu";
+export type { DropdownMenuContentProps } from "./DropdownMenu";
+export { AlertDialog } from "./AlertDialog";
+export type { AlertDialogProps, AlertDialogTone } from "./AlertDialog";
+export { Tabs, TabsList, TabsTrigger, TabsContent } from "./Tabs";
+export { Switch } from "./Switch";
+export type { SwitchProps } from "./Switch";

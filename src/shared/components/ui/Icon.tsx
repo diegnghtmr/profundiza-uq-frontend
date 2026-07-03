@@ -81,7 +81,7 @@ export function Icon({
 }: IconProps) {
   const LucideComponent = REGISTRY[name];
 
-  if (label) {
+  if (label !== undefined) {
     return (
       <LucideComponent
         size={SIZE[size]}
