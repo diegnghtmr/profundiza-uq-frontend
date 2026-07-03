@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/shared/lib/cn";
+import { FadeIn } from "./FadeIn";
 import { Icon, type IconName } from "./Icon";
 
 export interface EmptyStateProps {
@@ -14,7 +15,9 @@ export interface EmptyStateProps {
 /**
  * No-data / restricted state (FR-004). Renders on the frosted monochrome card
  * surface — no saturated fill; icon is decorative, title/description carry
- * the meaning (CC-A11Y: no color-only meaning).
+ * the meaning (CC-A11Y: no color-only meaning). The card enters via `FadeIn`
+ * (FR-006): a subtle opacity+drift transition, reduced-motion aware, that
+ * never blocks the action button from being clicked immediately.
  */
 export function EmptyState({
   icon,
@@ -24,7 +27,7 @@ export function EmptyState({
   className,
 }: EmptyStateProps) {
   return (
-    <div
+    <FadeIn
       className={cn(
         "surface-frosted flex flex-col items-center gap-3 rounded-[30px] p-8 text-center",
         className,
@@ -36,6 +39,6 @@ export function EmptyState({
         <p className="text-body-sm text-graphite">{description}</p>
       ) : null}
       {action ? <div className="mt-2">{action}</div> : null}
-    </div>
+    </FadeIn>
   );
 }
