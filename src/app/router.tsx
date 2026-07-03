@@ -4,6 +4,7 @@ import { AppShell } from "@/shared/components/layout/AppShell";
 import { FullPageFallback } from "./FullPageFallback";
 import { RequireAuth } from "./RequireAuth";
 import { RequireRole } from "./RequireRole";
+import { RouteErrorElement } from "./RouteErrorElement";
 
 // Route-level code splitting: each page ships in its own chunk, loaded on demand.
 // App pages resolve under AppShell's own Suspense boundary; the login route,
@@ -62,6 +63,7 @@ export const router = createBrowserRouter([
         <LoginPage />
       </Suspense>
     ),
+    errorElement: <RouteErrorElement />,
   },
   {
     path: "/app",
@@ -70,6 +72,7 @@ export const router = createBrowserRouter([
         <AppShell />
       </RequireAuth>
     ),
+    errorElement: <RouteErrorElement />,
     children: [
       { index: true, element: <Navigate to="home" replace /> },
       { path: "home", element: <HomePage /> },
