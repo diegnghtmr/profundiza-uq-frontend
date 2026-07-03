@@ -2,9 +2,10 @@ import {
   useNotifications,
   useMarkNotificationRead,
 } from "@/shared/api/notificationsApi";
-import { Spinner } from "@/shared/components/ui";
+import { DataState, EmptyState } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/cn";
 import { formatRelativeTime } from "../lib/relativeTime";
+import { NotificationsSkeleton } from "../components/NotificationsSkeleton";
 import type { Notification } from "@/shared/api/types";
 
 /** Alert color used for the unread dot. */
@@ -12,7 +13,7 @@ const UNREAD_DOT = "#fa3d1d";
 
 /** Container: lists the student's notifications and marks them read on click. */
 export function NotificationsPage() {
-  const { data, isLoading } = useNotifications();
+  const { data, isLoading, isError, error, refetch } = useNotifications();
   const markRead = useMarkNotificationRead();
 
   const items = data?.items ?? [];
@@ -46,15 +47,21 @@ export function NotificationsPage() {
         ) : null}
       </header>
 
-      {isLoading ? (
-        <div className="flex justify-center py-20">
-          <Spinner />
-        </div>
-      ) : items.length === 0 ? (
-        <p className="surface-frosted rounded-[20px] px-5 py-10 text-center text-body-sm text-slate">
-          You have no notifications yet.
-        </p>
-      ) : (
+      <DataState
+        isLoading={isLoading}
+        isError={isError}
+        isEmpty={items.length === 0}
+        error={error}
+        onRetry={() => void refetch()}
+        skeleton={<NotificationsSkeleton />}
+        emptyState={
+          <EmptyState
+            icon="bell"
+            title="No notifications yet"
+            description="You have no notifications yet."
+          />
+        }
+      >
         <ul className="flex flex-col gap-2.5">
           {items.map((notification) => (
             <NotificationRow
@@ -64,7 +71,7 @@ export function NotificationsPage() {
             />
           ))}
         </ul>
-      )}
+      </DataState>
     </section>
   );
 }

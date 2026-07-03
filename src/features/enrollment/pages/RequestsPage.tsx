@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Button,
   Card,
@@ -6,12 +7,15 @@ import {
   Spinner,
   StatusBadge,
   Badge,
+  DataState,
+  EmptyState,
   priorityLabel,
 } from "@/shared/components/ui";
 import { useUiStore } from "@/shared/stores/uiStore";
 import type { EnrollmentRequest } from "@/shared/api/types";
 import { useOfferings } from "@/features/catalog/api/offeringsApi";
 import { useMyRequests, useCancelRequest } from "../api/requestsApi";
+import { MyRequestsSkeleton } from "../components/MyRequestsSkeleton";
 
 /** Maps offering/group ids to human labels using the catalog query. */
 function useRequestLabels() {
@@ -38,7 +42,13 @@ const CANCELLABLE: ReadonlySet<EnrollmentRequest["status"]> = new Set([
 
 export function RequestsPage() {
   const semesterId = useUiStore((s) => s.selectedSemesterId);
-  const { data: requests, isLoading } = useMyRequests(semesterId);
+  const {
+    data: requests,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useMyRequests(semesterId);
   const labels = useRequestLabels();
   const cancelMutation = useCancelRequest();
   const [toCancel, setToCancel] = useState<EnrollmentRequest | null>(null);
@@ -55,17 +65,31 @@ export function RequestsPage() {
         </p>
       </header>
 
-      {isLoading ? (
-        <div className="flex justify-center py-20">
-          <Spinner />
-        </div>
-      ) : (requests?.length ?? 0) === 0 ? (
-        <p className="py-16 text-center text-body text-slate">
-          You have no requests yet.
-        </p>
-      ) : (
+      <DataState
+        isLoading={isLoading}
+        isError={isError}
+        isEmpty={(requests?.length ?? 0) === 0}
+        error={error}
+        onRetry={() => void refetch()}
+        skeleton={<MyRequestsSkeleton />}
+        emptyState={
+          <EmptyState
+            icon="file-text"
+            title="No requests yet"
+            description="You have no requests yet. Browse the catalog to add up to 4."
+            action={
+              <Link
+                to="/app/offerings"
+                className="inline-flex h-11 items-center justify-center rounded-[30px] bg-ink-black px-6 text-body-sm font-medium text-snow transition-opacity duration-200 ease-out hover:opacity-85"
+              >
+                Browse offerings
+              </Link>
+            }
+          />
+        }
+      >
         <div className="flex flex-col gap-4">
-          {requests!.map((request) => {
+          {(requests ?? []).map((request) => {
             const label = labels.get(request.offeringGroupId);
             const cancellable = CANCELLABLE.has(request.status);
             return (
@@ -102,7 +126,7 @@ export function RequestsPage() {
             );
           })}
         </div>
-      )}
+      </DataState>
 
       <Dialog
         open={toCancel !== null}

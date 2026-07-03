@@ -32,8 +32,15 @@ function notification(overrides: Partial<Notification>): Notification {
   };
 }
 
-function asQuery(page: Page | undefined, isLoading = false) {
-  return { data: page, isLoading } as unknown as ReturnType<
+function asQuery(
+  page: Page | undefined,
+  {
+    isLoading = false,
+    isError = false,
+    error = undefined as unknown,
+  }: { isLoading?: boolean; isError?: boolean; error?: unknown } = {},
+) {
+  return { data: page, isLoading, isError, error } as unknown as ReturnType<
     typeof useNotifications
   >;
 }
@@ -117,5 +124,28 @@ describe("NotificationsPage", () => {
     expect(
       screen.queryByRole("button", { name: "Mark all read" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("renders a structure-aware skeleton instead of the spinner while notifications load", () => {
+    mockUseNotifications.mockReturnValue(
+      asQuery(undefined, { isLoading: true }),
+    );
+
+    const { container } = render(<NotificationsPage />);
+
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(
+      screen.queryByRole("status", { name: "Loading" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders an inline error when the notifications query fails", () => {
+    mockUseNotifications.mockReturnValue(
+      asQuery(undefined, { isError: true, error: new Error("network down") }),
+    );
+
+    render(<NotificationsPage />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("network down");
   });
 });
