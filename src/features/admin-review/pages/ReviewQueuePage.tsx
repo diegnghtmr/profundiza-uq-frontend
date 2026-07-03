@@ -4,8 +4,9 @@ import {
   Badge,
   Button,
   Card,
+  DataState,
+  EmptyState,
   SegmentedControl,
-  Spinner,
   StatusBadge,
   priorityLabel,
 } from "@/shared/components/ui";
@@ -21,6 +22,7 @@ import type {
 import { CapacityDialog } from "@/features/admin-catalog/components/CapacityDialog";
 import { useReviewQueue, useSubmitDecision, reviewKeys } from "../api/reviewApi";
 import { DecisionDialog } from "../components/DecisionDialog";
+import { ReviewQueueSkeleton } from "../components/ReviewQueueSkeleton";
 
 /** Priority tiers, rendered in queue order within the selected group. */
 const PRIORITY_TIERS: readonly PriorityGroup[] = [
@@ -70,7 +72,13 @@ interface GroupBucket {
 export function ReviewQueuePage() {
   const semesterId = useUiStore((s) => s.selectedSemesterId);
   const qc = useQueryClient();
-  const { data: items, isLoading } = useReviewQueue(semesterId);
+  const {
+    data: items,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useReviewQueue(semesterId);
   const submitDecision = useSubmitDecision();
 
   const [pending, setPending] = useState<PendingDecision | null>(null);
@@ -102,15 +110,22 @@ export function ReviewQueuePage() {
         </p>
       </header>
 
-      {isLoading ? (
-        <div className="flex justify-center py-20">
-          <Spinner />
-        </div>
-      ) : !selected ? (
-        <Card className="py-10 text-center text-body-sm text-slate">
-          No requests are waiting for review in this semester.
-        </Card>
-      ) : (
+      <DataState
+        isLoading={isLoading}
+        isError={isError}
+        isEmpty={(items?.length ?? 0) === 0}
+        error={error}
+        onRetry={() => void refetch()}
+        skeleton={<ReviewQueueSkeleton />}
+        emptyState={
+          <EmptyState
+            icon="check"
+            title="No requests to review"
+            description="No requests are waiting for review in this semester."
+          />
+        }
+      >
+        {selected ? (
         <>
           <GroupPanel
             buckets={buckets}
@@ -169,7 +184,8 @@ export function ReviewQueuePage() {
             })
           )}
         </>
-      )}
+        ) : null}
+      </DataState>
 
       <DecisionDialog
         open={pending !== null}
