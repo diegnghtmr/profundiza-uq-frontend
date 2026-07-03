@@ -75,6 +75,35 @@ describe("fetchClient response schema validation", () => {
     expect(result).toEqual(wellFormed);
   });
 
+  it("accepts a null enrollmentWindowId (deleted window, backend sends null)", async () => {
+    // The backend column is ON DELETE SET NULL and the Go DTO field is *string
+    // with no omitempty, so a request whose window was deleted serializes as
+    // `"enrollmentWindowId": null`. The schema must accept that, not reject it.
+    const withNullWindow = {
+      items: [
+        {
+          id: "r1",
+          semesterId: "sem-1",
+          studentId: "s1",
+          offeringId: "o1",
+          offeringGroupId: "g1",
+          enrollmentWindowId: null,
+          priorityGroup: "DIRECT_SAME_SHIFT",
+          status: "SUBMITTED",
+          arrivalSequence: 1,
+          submittedAt: "2026-01-01T00:00:00Z",
+        },
+      ],
+    };
+    fetchMock.mockResolvedValueOnce(jsonResponse(withNullWindow));
+
+    const result = await fetchClient("/enrollment-requests", {
+      schema: myRequestsResponseSchema,
+    });
+
+    expect(result).toEqual(withNullWindow);
+  });
+
   it("throws at the boundary when the enrollment payload drifts (missing status)", async () => {
     const malformed = {
       items: [

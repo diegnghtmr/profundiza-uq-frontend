@@ -228,7 +228,9 @@ export interface EnrollmentRequest {
   studentId: string;
   offeringId: string;
   offeringGroupId: string;
-  enrollmentWindowId?: string;
+  // Nullable at the source (ON DELETE SET NULL; Go *string without omitempty):
+  // a deleted enrollment window serializes as null, not an absent key.
+  enrollmentWindowId?: string | null;
   studentShift?: AcademicShift;
   offeringShift?: AcademicShift;
   priorityGroup: PriorityGroup;

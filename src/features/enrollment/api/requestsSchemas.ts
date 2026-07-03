@@ -30,7 +30,11 @@ export const enrollmentRequestSchema = z.object({
   studentId: z.string(),
   offeringId: z.string(),
   offeringGroupId: z.string(),
-  enrollmentWindowId: z.string().optional(),
+  // Nullable at the source: the DB column is ON DELETE SET NULL and the Go DTO
+  // field is *string with no omitempty, so a deleted window serializes as
+  // `null` (not absent). `.nullish()` accepts null/undefined; `.optional()`
+  // alone would reject null and hard-fail the whole My Requests list.
+  enrollmentWindowId: z.string().nullish(),
   studentShift: academicShiftSchema.optional(),
   offeringShift: academicShiftSchema.optional(),
   priorityGroup: priorityGroupSchema,
