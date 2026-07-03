@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchClient } from "@/shared/api/client";
-import { errorMessage } from "@/shared/lib/apiErrors";
-import { toast } from "@/shared/stores/toastStore";
+import { notify } from "@/shared/lib/notify";
 
 // ---------------------------------------------------------------------------
 // Types co-located with this feature (the shared types module is not edited).
@@ -90,8 +89,8 @@ export function useUpdateSetting() {
       }),
     onSuccess: (setting) => {
       qc.invalidateQueries({ queryKey: settingsKeys.all });
-      toast.success(`Setting "${setting.key}" updated.`);
+      notify.success(`Setting "${setting.key}" updated.`);
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(error),
   });
 }

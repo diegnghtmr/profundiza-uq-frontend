@@ -1,7 +1,7 @@
 import { Button, Spinner } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/cn";
+import { notify } from "@/shared/lib/notify";
 import { MAX_DRAFT_SELECTION, useUiStore } from "@/shared/stores/uiStore";
-import { toast } from "@/shared/stores/toastStore";
 import { useSubmitEnrollmentBatch } from "@/features/enrollment/api/requestsApi";
 
 /**
@@ -24,7 +24,7 @@ export function DraftBar({ limitWarning }: { limitWarning: boolean }) {
       {
         onSuccess: (result) => {
           clearDraft();
-          toast.success(
+          notify.success(
             `Submitted ${result.items.length} request${result.items.length === 1 ? "" : "s"}.`,
           );
         },
