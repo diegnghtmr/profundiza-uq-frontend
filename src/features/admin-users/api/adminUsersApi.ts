@@ -71,20 +71,24 @@ export const adminUserKeys = {
 /** A generous page size: the admin list is browsed, not paginated, for the MVP. */
 const LIST_PAGE_SIZE = 100;
 
-function fetchAdmins(filters: AdminFilters): Promise<AdminUser[]> {
+function fetchAdmins(
+  filters: AdminFilters,
+  signal?: AbortSignal,
+): Promise<AdminUser[]> {
   return fetchClient<AdminUsersPage>("/admin/users", {
     query: {
       pageSize: LIST_PAGE_SIZE,
       role: filters.role || undefined,
       status: filters.status || undefined,
     },
+    signal,
   }).then((page) => page.items);
 }
 
 export function useAdmins(filters: AdminFilters) {
   return useQuery({
     queryKey: adminUserKeys.list(filters),
-    queryFn: () => fetchAdmins(filters),
+    queryFn: ({ signal }) => fetchAdmins(filters, signal),
     placeholderData: (previous) => previous,
   });
 }

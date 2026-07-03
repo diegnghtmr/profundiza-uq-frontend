@@ -60,12 +60,13 @@ export const catalogAdminKeys = {
 export function useElectives(q = "", area = "") {
   return useQuery({
     queryKey: catalogAdminKeys.electives(q, area),
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       fetchClient<{ items: Elective[] }>("/electives", {
         query: {
           q: q.trim() || undefined,
           area: area || undefined,
         },
+        signal,
       }).then((r) => r.items),
   });
 }
@@ -92,9 +93,10 @@ export function useCreateElective() {
 export function useElectivePrerequisites(electiveId: string, enabled: boolean) {
   return useQuery({
     queryKey: catalogAdminKeys.electivePrerequisites(electiveId),
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       fetchClient<{ items: OfferingPrerequisite[] }>(
         `/electives/${electiveId}/prerequisites`,
+        { signal },
       ).then((r) => r.items),
     enabled: enabled && electiveId !== "",
   });

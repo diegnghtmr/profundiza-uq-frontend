@@ -10,16 +10,20 @@ export const windowsKeys = {
 };
 
 /** GET /enrollment-windows returns `{ items: EnrollmentWindow[] }`. */
-function fetchWindows(semesterId: string): Promise<EnrollmentWindow[]> {
+function fetchWindows(
+  semesterId: string,
+  signal?: AbortSignal,
+): Promise<EnrollmentWindow[]> {
   return fetchClient<EnrollmentWindowsPage>("/enrollment-windows", {
     query: { semesterId },
+    signal,
   }).then((r) => r.items);
 }
 
 export function useEnrollmentWindows(semesterId: string) {
   return useQuery({
     queryKey: windowsKeys.list(semesterId),
-    queryFn: () => fetchWindows(semesterId),
+    queryFn: ({ signal }) => fetchWindows(semesterId, signal),
     enabled: semesterId !== "",
     staleTime: 60_000,
   });

@@ -25,6 +25,7 @@ import { fetchClient } from "@/shared/api/client";
 import { notify } from "@/shared/lib/notify";
 import {
   useCancelRequest,
+  useMyRequests,
   useSubmitEnrollmentBatch,
 } from "@/features/enrollment/api/requestsApi";
 
@@ -132,6 +133,18 @@ describe("useSubmitEnrollmentBatch", () => {
     expect(secondHeaders["Idempotency-Key"]).not.toBe(
       firstHeaders["Idempotency-Key"],
     );
+  });
+});
+
+describe("useMyRequests", () => {
+  it("forwards the TanStack Query AbortSignal to fetchClient so stale requests cancel", async () => {
+    mockFetch.mockResolvedValueOnce({ items: [] });
+
+    renderHook(() => useMyRequests("sem-1"), { wrapper });
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled());
+    const options = mockFetch.mock.calls[0][1];
+    expect(options?.signal).toBeInstanceOf(AbortSignal);
   });
 });
 

@@ -39,14 +39,14 @@ function logout(): Promise<void> {
   return fetchClient<void>("/auth/logout", { method: "POST" });
 }
 
-function fetchCurrentUser(): Promise<CurrentUser> {
+function fetchCurrentUser(signal?: AbortSignal): Promise<CurrentUser> {
   // GET /me returns the envelope { user, csrfToken } (same shape as login-verify),
   // so unwrap to the user. The top-level csrfToken is still auto-captured by the
   // fetch client before we unwrap. Returning the envelope verbatim here would
   // leave user.role / user.fullName undefined on every cache-miss refetch.
-  return fetchClient<{ user: CurrentUser; csrfToken?: string }>("/me").then(
-    (res) => res.user,
-  );
+  return fetchClient<{ user: CurrentUser; csrfToken?: string }>("/me", {
+    signal,
+  }).then((res) => res.user);
 }
 
 /**
@@ -57,7 +57,7 @@ function fetchCurrentUser(): Promise<CurrentUser> {
 export function useCurrentUser() {
   return useQuery({
     queryKey: authKeys.me,
-    queryFn: fetchCurrentUser,
+    queryFn: ({ signal }) => fetchCurrentUser(signal),
     retry: false,
     staleTime: 5 * 60_000,
   });

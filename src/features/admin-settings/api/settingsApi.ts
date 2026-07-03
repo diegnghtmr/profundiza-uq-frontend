@@ -62,16 +62,17 @@ export const settingsKeys = {
 /** A generous page size: settings are browsed as one list for the MVP. */
 const LIST_PAGE_SIZE = 100;
 
-function fetchSettings(): Promise<GlobalSetting[]> {
+function fetchSettings(signal?: AbortSignal): Promise<GlobalSetting[]> {
   return fetchClient<GlobalSettingsPage>("/admin/global-settings", {
     query: { pageSize: LIST_PAGE_SIZE },
+    signal,
   }).then((page) => page.items);
 }
 
 export function useSettings() {
   return useQuery({
     queryKey: settingsKeys.list(),
-    queryFn: fetchSettings,
+    queryFn: ({ signal }) => fetchSettings(signal),
   });
 }
 
