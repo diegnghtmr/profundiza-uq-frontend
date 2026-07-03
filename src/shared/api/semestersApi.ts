@@ -7,14 +7,14 @@ export const semestersKeys = {
 };
 
 /** GET /semesters returns a plain array (not a paged envelope). */
-function fetchSemesters(): Promise<Semester[]> {
-  return fetchClient<Semester[]>("/semesters");
+function fetchSemesters(signal?: AbortSignal): Promise<Semester[]> {
+  return fetchClient<Semester[]>("/semesters", { signal });
 }
 
 export function useSemesters() {
   return useQuery({
     queryKey: semestersKeys.all,
-    queryFn: fetchSemesters,
+    queryFn: ({ signal }) => fetchSemesters(signal),
     staleTime: 5 * 60_000,
   });
 }

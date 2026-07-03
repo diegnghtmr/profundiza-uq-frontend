@@ -18,10 +18,14 @@ export const requestsKeys = {
 };
 
 /** The signed-in student's enrollment requests for a semester. */
-function fetchMyRequests(semesterId: string): Promise<EnrollmentRequest[]> {
+function fetchMyRequests(
+  semesterId: string,
+  signal?: AbortSignal,
+): Promise<EnrollmentRequest[]> {
   return fetchClient<{ items: EnrollmentRequest[] }>("/enrollment-requests", {
     query: { semesterId },
     schema: myRequestsResponseSchema,
+    signal,
   }).then((r) => r.items);
 }
 
@@ -33,7 +37,7 @@ function fetchMyRequests(semesterId: string): Promise<EnrollmentRequest[]> {
 export function useMyRequests(semesterId: string, enabled = true) {
   return useQuery({
     queryKey: requestsKeys.mine(semesterId),
-    queryFn: () => fetchMyRequests(semesterId),
+    queryFn: ({ signal }) => fetchMyRequests(semesterId, signal),
     enabled: enabled && semesterId !== "",
   });
 }

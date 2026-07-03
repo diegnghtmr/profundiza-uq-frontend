@@ -17,16 +17,20 @@ export const offeringsKeys = {
  * summaries (`{ items: ElectiveOfferingSummary[] }`); prerequisites are loaded
  * on demand from the dedicated endpoint (see {@link useOfferingPrerequisites}).
  */
-function fetchOfferings(semesterId: string): Promise<ElectiveOfferingSummary[]> {
+function fetchOfferings(
+  semesterId: string,
+  signal?: AbortSignal,
+): Promise<ElectiveOfferingSummary[]> {
   return fetchClient<{ items: ElectiveOfferingSummary[] }>("/offerings", {
     query: { semesterId },
+    signal,
   }).then((r) => r.items);
 }
 
 export function useOfferings(semesterId: string) {
   return useQuery({
     queryKey: offeringsKeys.list(semesterId),
-    queryFn: () => fetchOfferings(semesterId),
+    queryFn: ({ signal }) => fetchOfferings(semesterId, signal),
     enabled: semesterId !== "",
   });
 }
@@ -35,9 +39,10 @@ export function useOfferings(semesterId: string) {
 export function useOfferingPrerequisites(offeringId: string, enabled: boolean) {
   return useQuery({
     queryKey: offeringsKeys.prerequisites(offeringId),
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       fetchClient<{ items: OfferingPrerequisite[] }>(
         `/offerings/${offeringId}/prerequisites`,
+        { signal },
       ).then((r) => r.items),
     enabled: enabled && offeringId !== "",
   });

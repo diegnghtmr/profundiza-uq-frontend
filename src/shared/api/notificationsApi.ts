@@ -14,9 +14,11 @@ const DEFAULT_PAGE_SIZE = 20;
 function fetchNotifications(
   page: number,
   pageSize: number,
+  signal?: AbortSignal,
 ): Promise<NotificationsPage> {
   return fetchClient<NotificationsPage>("/notifications", {
     query: { page, pageSize },
+    signal,
   });
 }
 
@@ -26,7 +28,7 @@ export function useNotifications(
 ) {
   return useQuery({
     queryKey: notificationsKeys.list(page, pageSize),
-    queryFn: () => fetchNotifications(page, pageSize),
+    queryFn: ({ signal }) => fetchNotifications(page, pageSize, signal),
   });
 }
 

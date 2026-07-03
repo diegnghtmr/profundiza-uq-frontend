@@ -42,6 +42,16 @@ describe("fetchClient response schema validation", () => {
     );
   });
 
+  it("forwards an AbortSignal to the underlying fetch call", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }));
+    const controller = new AbortController();
+
+    await fetchClient("/thing", { signal: controller.signal });
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect((init as RequestInit).signal).toBe(controller.signal);
+  });
+
   it("passes the payload through untouched when no schema is provided", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ anything: true }));
 
