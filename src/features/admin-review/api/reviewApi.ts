@@ -44,10 +44,24 @@ export interface DecisionInput extends CreateEnrollmentDecisionRequest {
 export function useSubmitDecision() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ requestId, decisionType, reason }: DecisionInput) =>
+    mutationFn: ({
+      requestId,
+      decisionType,
+      reason,
+      targetGroupId,
+    }: DecisionInput) =>
       fetchClient<EnrollmentDecisionResult>(
         `/admin/enrollment-requests/${requestId}/decisions`,
-        { method: "POST", body: { decisionType, reason } },
+        {
+          method: "POST",
+          // targetGroupId only rides along for CREATE_GROUP_ACCEPTANCE; other
+          // decision types never set it, so the key stays out of their body.
+          body: {
+            decisionType,
+            reason,
+            ...(targetGroupId ? { targetGroupId } : {}),
+          },
+        },
       ),
     onSuccess: (_result, variables) => {
       qc.invalidateQueries({ queryKey: reviewKeys.list(variables.semesterId) });

@@ -255,6 +255,12 @@ export interface EnrollmentDecision {
 export interface CreateEnrollmentDecisionRequest {
   decisionType: EnrollmentDecisionType;
   reason: string;
+  /**
+   * Target group for a CREATE_GROUP_ACCEPTANCE decision: the sibling group of
+   * the SAME offering the student is accepted into. Required only for that
+   * decision type; ignored by the backend otherwise.
+   */
+  targetGroupId?: string;
 }
 
 /** Response of POST /admin/enrollment-requests/{requestId}/decisions. */

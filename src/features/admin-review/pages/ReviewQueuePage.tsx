@@ -15,6 +15,7 @@ import {
   StatusBadge,
   priorityLabel,
 } from "@/shared/components/ui";
+import type { SelectOption } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/cn";
 import { useUiStore } from "@/shared/stores/uiStore";
 import type {
@@ -44,6 +45,7 @@ const TIER_HINT: Record<PriorityGroup, string> = {
 
 const ACTIONS: ReadonlyArray<{ type: EnrollmentDecisionType; label: string }> = [
   { type: "ACCEPT", label: "Accept" },
+  { type: "CREATE_GROUP_ACCEPTANCE", label: "Accept into another group" },
   { type: "REJECT", label: "Reject" },
   { type: "ADMIN_CANCEL", label: "Cancel" },
   { type: "MOVE_TO_REVIEW", label: "Move" },
@@ -193,8 +195,9 @@ export function ReviewQueuePage() {
         onOpenChange={(open) => !open && setPending(null)}
         decisionType={pending?.type ?? null}
         studentName={pending?.item.student.fullName ?? ""}
+        targetGroups={pending ? targetGroupOptions(pending.item) : []}
         pending={submitDecision.isPending}
-        onConfirm={(reason) => {
+        onConfirm={(reason, targetGroupId) => {
           if (!pending) return;
           submitDecision.mutate(
             {
@@ -202,6 +205,8 @@ export function ReviewQueuePage() {
               semesterId,
               decisionType: pending.type,
               reason,
+              // Only carried for CREATE_GROUP_ACCEPTANCE; omitted otherwise.
+              ...(targetGroupId ? { targetGroupId } : {}),
             },
             { onSettled: () => setPending(null) },
           );
@@ -397,6 +402,21 @@ function buildBuckets(items: AdminReviewQueueItem[]): GroupBucket[] {
     bucket.items.push(item);
   }
   return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
+/**
+ * Sibling groups of the request's offering, excluding its current group, as
+ * options for the CREATE_GROUP_ACCEPTANCE target selector. The offering summary
+ * already carries the full, offering-scoped group list, so no extra query is
+ * needed.
+ */
+function targetGroupOptions(item: AdminReviewQueueItem): SelectOption[] {
+  return item.offering.groups
+    .filter((g) => g.id !== item.group.id)
+    .map((g) => ({
+      value: g.id,
+      label: `${g.groupCode} · ${SHIFT_LABEL[g.shift]} · ${g.scheduleText}`,
+    }));
 }
 
 /** Adapt a review-queue group to the shape CapacityDialog expects. */
