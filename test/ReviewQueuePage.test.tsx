@@ -33,6 +33,7 @@ import type {
 } from "@/shared/api/types";
 
 const mockUseReviewQueue = vi.mocked(useReviewQueue);
+const mutateSpy = vi.fn();
 
 function renderPage() {
   const queryClient = new QueryClient();
@@ -114,8 +115,9 @@ function asQuery<T>(
 beforeEach(() => {
   vi.clearAllMocks();
   useUiStore.setState({ selectedSemesterId: "sem-1" });
+  mutateSpy.mockReset();
   vi.mocked(useSubmitDecision).mockReturnValue({
-    mutate: vi.fn(),
+    mutate: mutateSpy,
     isPending: false,
   } as unknown as ReturnType<typeof useSubmitDecision>);
   vi.mocked(useAdjustCapacity).mockReturnValue({
@@ -172,5 +174,109 @@ describe("ReviewQueuePage", () => {
     expect(
       screen.getByRole("heading", { name: "Accept request" }),
     ).toBeInTheDocument();
+  });
+});
+
+/** Offering carrying three sibling groups; g1 is the request's current group. */
+function multiGroupItem(): AdminReviewQueueItem {
+  const summaries = [
+    { id: "g1", groupCode: "G1", shift: "DAY", scheduleText: "Mon/Wed 08:00", capacity: 30, acceptedCount: 10, status: "ACTIVE" },
+    { id: "g2", groupCode: "G2", shift: "DAY", scheduleText: "Tue/Thu 10:00", capacity: 30, acceptedCount: 5, status: "ACTIVE" },
+    { id: "g3", groupCode: "G3", shift: "NIGHT", scheduleText: "Mon/Wed 18:00", capacity: 30, acceptedCount: 8, status: "ACTIVE" },
+  ] as unknown as ElectiveOfferingSummary["groups"];
+  return reviewItem({
+    offering: { ...reviewItem().offering, groups: summaries },
+    group: group({ id: "g1", groupCode: "G1" }),
+  });
+}
+
+async function openCreateGroupDialog(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: "Decide" }));
+  await user.click(
+    await screen.findByRole("menuitem", { name: "Accept into another group" }),
+  );
+}
+
+describe("ReviewQueuePage · CREATE_GROUP_ACCEPTANCE", () => {
+  it("renders the target-group selector only for CREATE_GROUP_ACCEPTANCE", async () => {
+    const user = userEvent.setup();
+    mockUseReviewQueue.mockReturnValue(asQuery([multiGroupItem()]));
+    renderPage();
+
+    // Plain Accept: no target-group selector.
+    await user.click(screen.getByRole("button", { name: "Decide" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Accept" }));
+    expect(screen.queryByLabelText("Target group")).not.toBeInTheDocument();
+    await user.keyboard("{Escape}");
+
+    // Accept into another group: selector is present.
+    await openCreateGroupDialog(user);
+    expect(screen.getByLabelText("Target group")).toBeInTheDocument();
+  });
+
+  it("keeps Confirm disabled until both a reason and a target group are set", async () => {
+    const user = userEvent.setup();
+    mockUseReviewQueue.mockReturnValue(asQuery([multiGroupItem()]));
+    renderPage();
+
+    await openCreateGroupDialog(user);
+    const confirm = screen.getByRole("button", { name: "Confirm decision" });
+    expect(confirm).toBeDisabled();
+
+    await user.type(
+      screen.getByLabelText("Reason"),
+      "Moving to the day group with open seats",
+    );
+    expect(confirm).toBeDisabled();
+
+    await user.selectOptions(screen.getByLabelText("Target group"), "g2");
+    expect(confirm).toBeEnabled();
+  });
+
+  it("scopes target options to the offering and excludes the current group", async () => {
+    const user = userEvent.setup();
+    mockUseReviewQueue.mockReturnValue(asQuery([multiGroupItem()]));
+    renderPage();
+
+    await openCreateGroupDialog(user);
+    const select = screen.getByLabelText("Target group") as HTMLSelectElement;
+    const values = [...select.options]
+      .map((o) => o.value)
+      .filter((v) => v !== "");
+
+    expect(values).toEqual(["g2", "g3"]);
+  });
+
+  it("submits CREATE_GROUP_ACCEPTANCE with the chosen targetGroupId", async () => {
+    const user = userEvent.setup();
+    mockUseReviewQueue.mockReturnValue(asQuery([multiGroupItem()]));
+    renderPage();
+
+    await openCreateGroupDialog(user);
+    await user.type(screen.getByLabelText("Reason"), "Seat opened in G2");
+    await user.selectOptions(screen.getByLabelText("Target group"), "g2");
+    await user.click(screen.getByRole("button", { name: "Confirm decision" }));
+
+    expect(mutateSpy).toHaveBeenCalledTimes(1);
+    expect(mutateSpy.mock.calls[0][0]).toMatchObject({
+      requestId: "r1",
+      decisionType: "CREATE_GROUP_ACCEPTANCE",
+      reason: "Seat opened in G2",
+      targetGroupId: "g2",
+    });
+  });
+
+  it("does not include targetGroupId when submitting a plain ACCEPT", async () => {
+    const user = userEvent.setup();
+    mockUseReviewQueue.mockReturnValue(asQuery([multiGroupItem()]));
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: "Decide" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Accept" }));
+    await user.type(screen.getByLabelText("Reason"), "Capacity available");
+    await user.click(screen.getByRole("button", { name: "Confirm decision" }));
+
+    expect(mutateSpy).toHaveBeenCalledTimes(1);
+    expect(mutateSpy.mock.calls[0][0]).not.toHaveProperty("targetGroupId");
   });
 });

@@ -55,4 +55,50 @@ describe("useSubmitDecision", () => {
 
     await waitFor(() => expect(mockNotify.error).toHaveBeenCalledWith(error));
   });
+
+  it("sends targetGroupId in the body for a CREATE_GROUP_ACCEPTANCE decision", async () => {
+    mockFetch.mockResolvedValueOnce({});
+
+    const { result } = renderHook(() => useSubmitDecision(), { wrapper });
+    result.current.mutate({
+      requestId: "req-1",
+      semesterId: "sem-1",
+      decisionType: "CREATE_GROUP_ACCEPTANCE",
+      reason: "Seat opened in the day group",
+      targetGroupId: "group-2",
+    });
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/admin/enrollment-requests/req-1/decisions",
+      expect.objectContaining({
+        method: "POST",
+        body: {
+          decisionType: "CREATE_GROUP_ACCEPTANCE",
+          reason: "Seat opened in the day group",
+          targetGroupId: "group-2",
+        },
+      }),
+    );
+  });
+
+  it("omits targetGroupId from the body for a plain ACCEPT decision", async () => {
+    mockFetch.mockResolvedValueOnce({});
+
+    const { result } = renderHook(() => useSubmitDecision(), { wrapper });
+    result.current.mutate({
+      requestId: "req-1",
+      semesterId: "sem-1",
+      decisionType: "ACCEPT",
+      reason: "Capacity available",
+    });
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/admin/enrollment-requests/req-1/decisions",
+      expect.objectContaining({
+        body: { decisionType: "ACCEPT", reason: "Capacity available" },
+      }),
+    );
+  });
 });
