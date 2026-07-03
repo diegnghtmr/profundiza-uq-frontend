@@ -153,4 +153,20 @@ describe("CatalogPage", () => {
       screen.getByText("No electives yet. Create the first one to get started."),
     ).toBeInTheDocument();
   });
+
+  it("shows a section divider before the inline add-prerequisite form (Separator adoption)", async () => {
+    const user = userEvent.setup();
+    mockUseElectives.mockReturnValue(
+      asQuery([elective({ id: "e1", name: "Machine Learning", area: "Software" })]),
+    );
+
+    render(<CatalogPage />);
+
+    await user.click(screen.getByRole("button", { name: "Prerequisites" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Add prerequisite" }),
+    );
+
+    expect(screen.getByRole("separator")).toBeInTheDocument();
+  });
 });
