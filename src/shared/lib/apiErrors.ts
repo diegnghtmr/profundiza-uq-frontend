@@ -1,4 +1,4 @@
-import { ApiRequestError } from "@/shared/api/client";
+import { ApiRequestError, ApiSchemaError } from "@/shared/api/client";
 
 /** Shown whenever we cannot safely surface a specific, catalogued detail. */
 const GENERIC_MESSAGE = "Something went wrong. Please try again.";
@@ -38,6 +38,11 @@ export function errorMessage(error: unknown): string {
     const isSafeClientDetail =
       error.status < 500 && error.code !== "UNKNOWN" && Boolean(error.message);
     return isSafeClientDetail ? error.message : GENERIC_MESSAGE;
+  }
+  // A schema-drift failure carries an internal endpoint path in its message
+  // ("Response validation failed for /..."). Never surface that to the user.
+  if (error instanceof ApiSchemaError) {
+    return GENERIC_MESSAGE;
   }
   if (error instanceof Error && error.message) {
     return error.message;

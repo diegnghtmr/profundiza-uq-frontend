@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { fetchClient } from "@/shared/api/client";
+import { z } from "zod";
+import { fetchClient, ApiSchemaError } from "@/shared/api/client";
+import { myRequestsResponseSchema } from "@/features/enrollment/api/requestsSchemas";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -20,7 +22,26 @@ afterEach(() => {
   globalThis.fetch = realFetch;
 });
 
-describe("fetchClient AbortSignal forwarding", () => {
+describe("fetchClient response schema validation", () => {
+  it("returns the parsed payload when it matches the schema", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ id: "a", count: 2 }));
+    const schema = z.object({ id: z.string(), count: z.number() });
+
+    const result = await fetchClient("/thing", { schema });
+
+    expect(result).toEqual({ id: "a", count: 2 });
+  });
+
+  it("throws an ApiSchemaError when a field is missing or renamed", async () => {
+    // Backend renamed `count` -> `total`; the response no longer matches.
+    fetchMock.mockResolvedValueOnce(jsonResponse({ id: "a", total: 2 }));
+    const schema = z.object({ id: z.string(), count: z.number() });
+
+    await expect(fetchClient("/thing", { schema })).rejects.toBeInstanceOf(
+      ApiSchemaError,
+    );
+  });
+
   it("forwards an AbortSignal to the underlying fetch call", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }));
     const controller = new AbortController();
@@ -29,5 +50,90 @@ describe("fetchClient AbortSignal forwarding", () => {
 
     const [, init] = fetchMock.mock.calls[0];
     expect((init as RequestInit).signal).toBe(controller.signal);
+  });
+
+  it("passes the payload through untouched when no schema is provided", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ anything: true }));
+
+    const result = await fetchClient("/thing");
+
+    expect(result).toEqual({ anything: true });
+  });
+
+  it("accepts a well-formed enrollment-requests payload against the wired schema", async () => {
+    const wellFormed = {
+      items: [
+        {
+          id: "r1",
+          semesterId: "sem-1",
+          studentId: "s1",
+          offeringId: "o1",
+          offeringGroupId: "g1",
+          priorityGroup: "DIRECT_SAME_SHIFT",
+          status: "SUBMITTED",
+          arrivalSequence: 1,
+          submittedAt: "2026-01-01T00:00:00Z",
+        },
+      ],
+    };
+    fetchMock.mockResolvedValueOnce(jsonResponse(wellFormed));
+
+    const result = await fetchClient("/enrollment-requests", {
+      schema: myRequestsResponseSchema,
+    });
+
+    expect(result).toEqual(wellFormed);
+  });
+
+  it("accepts a null enrollmentWindowId (deleted window, backend sends null)", async () => {
+    // The backend column is ON DELETE SET NULL and the Go DTO field is *string
+    // with no omitempty, so a request whose window was deleted serializes as
+    // `"enrollmentWindowId": null`. The schema must accept that, not reject it.
+    const withNullWindow = {
+      items: [
+        {
+          id: "r1",
+          semesterId: "sem-1",
+          studentId: "s1",
+          offeringId: "o1",
+          offeringGroupId: "g1",
+          enrollmentWindowId: null,
+          priorityGroup: "DIRECT_SAME_SHIFT",
+          status: "SUBMITTED",
+          arrivalSequence: 1,
+          submittedAt: "2026-01-01T00:00:00Z",
+        },
+      ],
+    };
+    fetchMock.mockResolvedValueOnce(jsonResponse(withNullWindow));
+
+    const result = await fetchClient("/enrollment-requests", {
+      schema: myRequestsResponseSchema,
+    });
+
+    expect(result).toEqual(withNullWindow);
+  });
+
+  it("throws at the boundary when the enrollment payload drifts (missing status)", async () => {
+    const malformed = {
+      items: [
+        {
+          id: "r1",
+          semesterId: "sem-1",
+          studentId: "s1",
+          offeringId: "o1",
+          offeringGroupId: "g1",
+          priorityGroup: "DIRECT_SAME_SHIFT",
+          // status is missing — contract drift
+          arrivalSequence: 1,
+          submittedAt: "2026-01-01T00:00:00Z",
+        },
+      ],
+    };
+    fetchMock.mockResolvedValueOnce(jsonResponse(malformed));
+
+    await expect(
+      fetchClient("/enrollment-requests", { schema: myRequestsResponseSchema }),
+    ).rejects.toBeInstanceOf(ApiSchemaError);
   });
 });

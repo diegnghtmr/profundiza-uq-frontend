@@ -8,6 +8,7 @@ import type {
 } from "@/shared/api/types";
 import { notify } from "@/shared/lib/notify";
 import { useUiStore } from "@/shared/stores/uiStore";
+import { authSessionSchema } from "./authSchemas";
 
 export const authKeys = {
   me: ["auth", "me"] as const,
@@ -45,6 +46,7 @@ function fetchCurrentUser(signal?: AbortSignal): Promise<CurrentUser> {
   // fetch client before we unwrap. Returning the envelope verbatim here would
   // leave user.role / user.fullName undefined on every cache-miss refetch.
   return fetchClient<{ user: CurrentUser; csrfToken?: string }>("/me", {
+    schema: authSessionSchema,
     signal,
   }).then((res) => res.user);
 }
