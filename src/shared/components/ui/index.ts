@@ -16,3 +16,4 @@ export { Spinner } from "./Spinner";
 export { Dialog } from "./Dialog";
 export { FilterPill, SegmentedControl } from "./FilterPill";
 export { Toaster } from "./Toast";
+export { SonnerToaster } from "./SonnerToaster";
