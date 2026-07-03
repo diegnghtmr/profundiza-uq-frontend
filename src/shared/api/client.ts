@@ -1,3 +1,4 @@
+import type { ZodType } from "zod";
 import type { ApiError } from "./types";
 
 /**
@@ -39,14 +40,41 @@ export class ApiRequestError extends Error {
   }
 }
 
-export interface FetchOptions extends Omit<RequestInit, "body"> {
+/**
+ * Thrown by {@link fetchClient} when a 2xx payload does not match the response
+ * schema wired for that endpoint — i.e. the backend contract drifted. Caught at
+ * the boundary so a renamed/missing field surfaces as a clear, typed failure
+ * instead of an `undefined` field crashing a component deep in the tree.
+ */
+export class ApiSchemaError extends Error {
+  readonly path: string;
+  readonly issues: unknown;
+
+  constructor(path: string, issues: unknown) {
+    super(`Response validation failed for ${path}`);
+    this.name = "ApiSchemaError";
+    this.path = path;
+    this.issues = issues;
+  }
+}
+
+/** Query string parameters appended to the URL. */
+export type QueryParams = Record<string, string | number | boolean | undefined>;
+
+export interface FetchOptions<TResponse = unknown>
+  extends Omit<RequestInit, "body"> {
   /** JSON-serializable request body. */
   body?: unknown;
   /** Query string parameters appended to the URL. */
-  query?: Record<string, string | number | boolean | undefined>;
+  query?: QueryParams;
+  /**
+   * Optional runtime response schema. When provided, the parsed 2xx payload is
+   * validated against it before returning; a mismatch throws {@link ApiSchemaError}.
+   */
+  schema?: ZodType<TResponse>;
 }
 
-function buildUrl(path: string, query?: FetchOptions["query"]): string {
+function buildUrl(path: string, query?: QueryParams): string {
   const url = `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
   if (!query) return url;
   const params = new URLSearchParams();
@@ -64,9 +92,9 @@ function buildUrl(path: string, query?: FetchOptions["query"]): string {
  */
 export async function fetchClient<TResponse>(
   path: string,
-  options: FetchOptions = {},
+  options: FetchOptions<TResponse> = {},
 ): Promise<TResponse> {
-  const { body, query, headers, ...rest } = options;
+  const { body, query, headers, schema, ...rest } = options;
 
   // Attach the CSRF token on state-changing requests; the backend rejects them
   // with 403 otherwise. GET/HEAD/OPTIONS are exempt server-side.
@@ -122,6 +150,17 @@ export async function fetchClient<TResponse>(
     typeof (payload as { csrfToken: unknown }).csrfToken === "string"
   ) {
     csrfToken = (payload as { csrfToken: string }).csrfToken;
+  }
+
+  // Runtime contract check at the single network seam. Compile-time `as
+  // TResponse` casts trust the backend blindly; a wired schema turns a drifted
+  // field into a clear, catchable error here instead of a crash downstream.
+  if (schema) {
+    const result = schema.safeParse(payload);
+    if (!result.success) {
+      throw new ApiSchemaError(path, result.error.issues);
+    }
+    return result.data;
   }
 
   return payload as TResponse;

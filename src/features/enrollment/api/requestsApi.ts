@@ -6,6 +6,11 @@ import type {
   EnrollmentRequestBatchResult,
 } from "@/shared/api/types";
 import { notify } from "@/shared/lib/notify";
+import {
+  enrollmentBatchResultSchema,
+  enrollmentRequestSchema,
+  myRequestsResponseSchema,
+} from "./requestsSchemas";
 
 export const requestsKeys = {
   all: ["requests"] as const,
@@ -16,6 +21,7 @@ export const requestsKeys = {
 function fetchMyRequests(semesterId: string): Promise<EnrollmentRequest[]> {
   return fetchClient<{ items: EnrollmentRequest[] }>("/enrollment-requests", {
     query: { semesterId },
+    schema: myRequestsResponseSchema,
   }).then((r) => r.items);
 }
 
@@ -66,6 +72,7 @@ export function useSubmitEnrollmentBatch() {
           semesterId,
           items: offeringGroupIds.map((offeringGroupId) => ({ offeringGroupId })),
         },
+        schema: enrollmentBatchResultSchema,
       }),
     onSuccess: () => {
       // The submit is confirmed; rotate the key so the next distinct submit
@@ -84,6 +91,7 @@ export function useCancelRequest() {
     mutationFn: (id: string) =>
       fetchClient<EnrollmentRequest>(`/enrollment-requests/${id}/cancel`, {
         method: "POST",
+        schema: enrollmentRequestSchema,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: requestsKeys.all });

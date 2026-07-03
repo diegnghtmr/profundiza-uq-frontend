@@ -8,6 +8,7 @@ import type {
 } from "@/shared/api/types";
 import { notify } from "@/shared/lib/notify";
 import { useUiStore } from "@/shared/stores/uiStore";
+import { authSessionSchema } from "./authSchemas";
 
 export const authKeys = {
   me: ["auth", "me"] as const,
@@ -44,9 +45,9 @@ function fetchCurrentUser(): Promise<CurrentUser> {
   // so unwrap to the user. The top-level csrfToken is still auto-captured by the
   // fetch client before we unwrap. Returning the envelope verbatim here would
   // leave user.role / user.fullName undefined on every cache-miss refetch.
-  return fetchClient<{ user: CurrentUser; csrfToken?: string }>("/me").then(
-    (res) => res.user,
-  );
+  return fetchClient<{ user: CurrentUser; csrfToken?: string }>("/me", {
+    schema: authSessionSchema,
+  }).then((res) => res.user);
 }
 
 /**
