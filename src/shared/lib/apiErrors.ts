@@ -1,4 +1,4 @@
-import { ApiRequestError } from "@/shared/api/client";
+import { ApiRequestError, ApiSchemaError } from "@/shared/api/client";
 
 /**
  * Friendly, user-facing copy for the API error `code`s the UI can surface.
@@ -22,6 +22,11 @@ const FRIENDLY_MESSAGES: Record<string, string> = {
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiRequestError) {
     return FRIENDLY_MESSAGES[error.code] ?? error.message ?? "Something went wrong.";
+  }
+  // A schema-drift failure carries an internal endpoint path in its message
+  // ("Response validation failed for /..."). Never surface that to the user.
+  if (error instanceof ApiSchemaError) {
+    return "Something went wrong. Please try again.";
   }
   if (error instanceof Error && error.message) {
     return error.message;
