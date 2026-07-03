@@ -9,6 +9,7 @@ import { Logo } from "@/shared/components/layout/Logo";
 import { ROLE_LANDING } from "@/shared/config/navigation";
 import { errorMessage } from "@/shared/lib/apiErrors";
 import { setCsrfToken } from "@/shared/api/client";
+import { armSessionExpiry } from "@/shared/api/queryClient";
 import { useUiStore } from "@/shared/stores/uiStore";
 import type { CurrentUser } from "@/shared/api/types";
 import { authKeys, startLogin, verifyLogin } from "../api/authApi";
@@ -95,6 +96,10 @@ export function LoginPage() {
     useUiStore.getState().resetSession();
     // Seed the /me cache so the route guard resolves immediately after login.
     queryClient.setQueryData(authKeys.me, user);
+    // setQueryData does not fire QueryCache.onSuccess, so re-arm the
+    // session-expiry guard explicitly; otherwise a second expiry after this
+    // re-login would be swallowed (no CSRF wipe, no redirect).
+    armSessionExpiry();
     navigate(ROLE_LANDING[user.role]);
   }
 

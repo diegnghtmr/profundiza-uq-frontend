@@ -7,8 +7,8 @@ vi.mock("@/shared/api/client", async (importOriginal) => {
   return { ...actual, setCsrfToken: vi.fn(actual.setCsrfToken) };
 });
 
-import { ApiRequestError, setCsrfToken } from "@/shared/api/client";
-import { queryClient } from "@/shared/api/queryClient";
+import { ApiRequestError, ApiSchemaError, setCsrfToken } from "@/shared/api/client";
+import { armSessionExpiry, queryClient } from "@/shared/api/queryClient";
 import { authKeys } from "@/features/auth/api/authApi";
 import { useUiStore } from "@/shared/stores/uiStore";
 
@@ -91,5 +91,38 @@ describe("queryClient centralized 401 handling", () => {
       id: "u1",
       role: "STUDENT",
     });
+  });
+
+  it("re-arms the guard on login so a SECOND expiry runs cleanup again", async () => {
+    // First expiry: cleanup runs, the module guard flips to true.
+    await runFailingMutation(unauthorized());
+    expect(mockSetCsrfToken).toHaveBeenCalledWith(null);
+    mockSetCsrfToken.mockClear();
+
+    // Re-login the way LoginPage.enter() does: seed /me via setQueryData (which
+    // does NOT fire QueryCache.onSuccess) and explicitly re-arm the guard.
+    queryClient.setQueryData(authKeys.me, { id: "u2", role: "STUDENT" });
+    armSessionExpiry();
+
+    // Second expiry must run cleanup again — before the fix the guard stayed
+    // true because setQueryData never re-armed it, so this was a no-op.
+    await runFailingMutation(unauthorized());
+    expect(mockSetCsrfToken).toHaveBeenCalledWith(null);
+  });
+});
+
+describe("queryClient retry policy", () => {
+  it("does not retry a deterministic ApiSchemaError (attempted exactly once)", async () => {
+    const queryFn = vi.fn(() =>
+      Promise.reject(new ApiSchemaError("/enrollment-requests", [])),
+    );
+    const query = queryClient.getQueryCache().build(queryClient, {
+      queryKey: ["schema-retry-probe"],
+      queryFn,
+    });
+
+    await query.fetch().catch(() => {});
+
+    expect(queryFn).toHaveBeenCalledTimes(1);
   });
 });
