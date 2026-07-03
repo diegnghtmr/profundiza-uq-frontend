@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { Button, Dialog, Select, Spinner, Textarea } from "@/shared/components/ui";
+import {
+  Button,
+  Dialog,
+  InlineError,
+  Select,
+  Spinner,
+  Textarea,
+} from "@/shared/components/ui";
 import type { SelectOption } from "@/shared/components/ui";
 import type { EnrollmentDecisionType } from "@/shared/api/types";
 
@@ -64,6 +71,10 @@ export function DecisionDialog({
   }
 
   const needsTargetGroup = decisionType === "CREATE_GROUP_ACCEPTANCE";
+  // Single-group offerings have no sibling to move the student into, so there is
+  // nothing to target. Surface that plainly instead of leaving a dead form with
+  // a permanently disabled Confirm and no explanation.
+  const noTargetGroups = needsTargetGroup && targetGroups.length === 0;
   const reasonValid = reason.trim().length >= MIN_REASON;
   const targetGroupValid =
     !needsTargetGroup || targetGroupId !== TARGET_GROUP_PLACEHOLDER;
@@ -106,26 +117,35 @@ export function DecisionDialog({
       }
     >
       <div className="flex flex-col gap-4">
-        {needsTargetGroup ? (
-          <Select
-            label="Target group"
-            options={targetGroupOptions}
-            value={targetGroupId}
-            onChange={(e) => setTargetGroupId(e.target.value)}
+        {noTargetGroups ? (
+          <InlineError
+            tone="info"
+            message="No other groups in this offering to move this student into. Create another group for the offering first."
           />
-        ) : null}
-        <Textarea
-          label="Reason"
-          rows={3}
-          placeholder="Explain the rationale for this decision…"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          error={
-            !reasonValid && reason.length > 0
-              ? `Provide at least ${MIN_REASON} characters.`
-              : undefined
-          }
-        />
+        ) : (
+          <>
+            {needsTargetGroup ? (
+              <Select
+                label="Target group"
+                options={targetGroupOptions}
+                value={targetGroupId}
+                onChange={(e) => setTargetGroupId(e.target.value)}
+              />
+            ) : null}
+            <Textarea
+              label="Reason"
+              rows={3}
+              placeholder="Explain the rationale for this decision…"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              error={
+                !reasonValid && reason.length > 0
+                  ? `Provide at least ${MIN_REASON} characters.`
+                  : undefined
+              }
+            />
+          </>
+        )}
       </div>
     </Dialog>
   );

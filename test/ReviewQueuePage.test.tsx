@@ -28,8 +28,8 @@ import { useUiStore } from "@/shared/stores/uiStore";
 import { ReviewQueuePage } from "@/features/admin-review/pages/ReviewQueuePage";
 import type {
   AdminReviewQueueItem,
-  ElectiveOfferingSummary,
   OfferingGroup,
+  OfferingGroupSummary,
 } from "@/shared/api/types";
 
 const mockUseReviewQueue = vi.mocked(useReviewQueue);
@@ -56,6 +56,26 @@ function group(overrides: Partial<OfferingGroup> = {}): OfferingGroup {
     status: "ACTIVE",
     createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-01-01T00:00:00Z",
+    ...overrides,
+  };
+}
+
+/**
+ * A summary as the backend actually returns it inside `offering.groups`: the
+ * offering-scoped OfferingGroupSummary shape (no offeringId/timestamps), NOT the
+ * fuller OfferingGroup used for `item.group`.
+ */
+function groupSummary(
+  overrides: Partial<OfferingGroupSummary> = {},
+): OfferingGroupSummary {
+  return {
+    id: "g1",
+    groupCode: "G1",
+    shift: "DAY",
+    scheduleText: "Mon/Wed 08:00",
+    capacity: 30,
+    acceptedCount: 10,
+    status: "ACTIVE",
     ...overrides,
   };
 }
@@ -96,7 +116,9 @@ function reviewItem(overrides: Partial<AdminReviewQueueItem> = {}): AdminReviewQ
         createdAt: "2026-01-01T00:00:00Z",
         updatedAt: "2026-01-01T00:00:00Z",
       },
-      groups: [group()] as unknown as ElectiveOfferingSummary["groups"],
+      // Real single-group payload: offering.groups carries only the request's
+      // own group. The CREATE_GROUP_ACCEPTANCE selector must then offer nothing.
+      groups: [groupSummary()],
     },
     group: group(),
     ...overrides,
@@ -177,13 +199,17 @@ describe("ReviewQueuePage", () => {
   });
 });
 
-/** Offering carrying three sibling groups; g1 is the request's current group. */
+/**
+ * A multi-group offering as the backend now returns it: offering.groups is the
+ * offering's FULL active group list — the request's own group (g1) plus its
+ * siblings (g2, g3). The target selector filters g1 out, leaving g2 and g3.
+ */
 function multiGroupItem(): AdminReviewQueueItem {
-  const summaries = [
-    { id: "g1", groupCode: "G1", shift: "DAY", scheduleText: "Mon/Wed 08:00", capacity: 30, acceptedCount: 10, status: "ACTIVE" },
-    { id: "g2", groupCode: "G2", shift: "DAY", scheduleText: "Tue/Thu 10:00", capacity: 30, acceptedCount: 5, status: "ACTIVE" },
-    { id: "g3", groupCode: "G3", shift: "NIGHT", scheduleText: "Mon/Wed 18:00", capacity: 30, acceptedCount: 8, status: "ACTIVE" },
-  ] as unknown as ElectiveOfferingSummary["groups"];
+  const summaries: OfferingGroupSummary[] = [
+    groupSummary({ id: "g1", groupCode: "G1", shift: "DAY", scheduleText: "Mon/Wed 08:00", capacity: 30, acceptedCount: 10 }),
+    groupSummary({ id: "g2", groupCode: "G2", shift: "DAY", scheduleText: "Tue/Thu 10:00", capacity: 30, acceptedCount: 5 }),
+    groupSummary({ id: "g3", groupCode: "G3", shift: "NIGHT", scheduleText: "Mon/Wed 18:00", capacity: 30, acceptedCount: 8 }),
+  ];
   return reviewItem({
     offering: { ...reviewItem().offering, groups: summaries },
     group: group({ id: "g1", groupCode: "G1" }),
@@ -264,6 +290,28 @@ describe("ReviewQueuePage · CREATE_GROUP_ACCEPTANCE", () => {
       reason: "Seat opened in G2",
       targetGroupId: "g2",
     });
+  });
+
+  it("communicates the empty state and blocks the action when the offering has no other groups", async () => {
+    const user = userEvent.setup();
+    // A single-group offering: offering.groups carries only the request's own
+    // group, so there is no sibling to target. This is the REAL payload for a
+    // single-group offering now that the backend returns the full active list.
+    mockUseReviewQueue.mockReturnValue(asQuery([reviewItem()]));
+    renderPage();
+
+    await openCreateGroupDialog(user);
+
+    // No selectable target-group control is offered when there is nothing to pick.
+    expect(screen.queryByLabelText("Target group")).not.toBeInTheDocument();
+    // The dialog explains why instead of leaving a dead, unexplained form.
+    expect(
+      screen.getByText(/no other groups in this offering/i),
+    ).toBeInTheDocument();
+    // Confirm stays unavailable — the action cannot proceed with no target.
+    expect(
+      screen.getByRole("button", { name: "Confirm decision" }),
+    ).toBeDisabled();
   });
 
   it("does not include targetGroupId when submitting a plain ACCEPT", async () => {
