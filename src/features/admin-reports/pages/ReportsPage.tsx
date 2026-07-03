@@ -1,10 +1,11 @@
-import { useState, type FormEvent } from "react";
+import { lazy, Suspense, useState, type FormEvent } from "react";
 import {
   Badge,
   Button,
   Card,
   DataState,
   EmptyState,
+  PageSkeleton,
   SegmentedControl,
   Select,
   Spinner,
@@ -22,6 +23,14 @@ import {
   type ReportType,
 } from "../api/reportsApi";
 import { ReportsSkeleton } from "../components/ReportsSkeleton";
+
+// Recharts pulls a heavy vendor tree (redux, immer, d3-*), so ReportCharts is
+// loaded on demand rather than at the entry/route chunk (design ADR-008).
+const ReportCharts = lazy(() =>
+  import("../components/ReportCharts").then((m) => ({
+    default: m.ReportCharts,
+  })),
+);
 
 const REPORT_TYPE_OPTIONS: ReadonlyArray<{ value: ReportType; label: string }> = [
   { value: "GENERAL_SEMESTER", label: "General semester" },
@@ -160,6 +169,10 @@ export function ReportsPage() {
               />
             }
           >
+            <Suspense fallback={<PageSkeleton lines={1} />}>
+              <ReportCharts reports={reports ?? []} />
+            </Suspense>
+
             <Card className="overflow-hidden p-0">
               <table className="w-full border-collapse text-left">
                 <thead>

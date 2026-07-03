@@ -52,6 +52,26 @@
     z-index: 0;
   }
 
+  /* Recharts writes fill/stroke as SVG presentation attributes, where CSS
+     var() does not resolve. Re-apply the monochrome tokens as author
+     declarations (which resolve var() and outrank presentation attributes) so
+     the chart stays on-brand instead of falling back to Recharts defaults. */
+  .report-chart .recharts-cartesian-grid line {
+    stroke: var(--color-pebble);
+  }
+  .report-chart .recharts-cartesian-axis-line {
+    stroke: var(--color-pebble);
+  }
+  .report-chart .recharts-cartesian-axis-tick-value {
+    fill: var(--color-slate);
+  }
+  .report-chart .recharts-bar-rectangle path {
+    fill: var(--color-ink-black);
+  }
+  .report-chart .recharts-tooltip-cursor {
+    fill: var(--color-fog);
+  }
+
   /* Full-bleed login backdrop glow. */
   .ambient-backdrop {
     background-color: var(--color-canvas);

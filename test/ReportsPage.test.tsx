@@ -105,8 +105,32 @@ describe("ReportsPage", () => {
     expect(screen.getByText("Recent exports")).toBeInTheDocument();
     // "Waitlist" appears both as a report-type <option> and as the row's type cell.
     expect(screen.getAllByText("Waitlist").length).toBeGreaterThanOrEqual(2);
-    // "Completed" is the row's status badge and is unique on the page.
-    expect(screen.getByText("Completed")).toBeInTheDocument();
+    // "Completed" appears both as the row's status badge and (once the lazy
+    // chart resolves) as a status-distribution label — at least one match.
+    expect(screen.getAllByText("Completed").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("lazy-loads the status-distribution chart once report data is present (FR-007)", async () => {
+    mockUseReports.mockReturnValue(
+      asReportsQuery([
+        reportExport({ id: "r1", status: "COMPLETED" }),
+        reportExport({ id: "r2", status: "FAILED" }),
+      ]),
+    );
+
+    render(<ReportsPage />);
+
+    expect(
+      await screen.findByText("Exports by status"),
+    ).toBeInTheDocument();
+  });
+
+  it("does not render the chart section when there is no report data", () => {
+    mockUseReports.mockReturnValue(asReportsQuery([]));
+
+    render(<ReportsPage />);
+
+    expect(screen.queryByText("Exports by status")).not.toBeInTheDocument();
   });
 
   it("shows an empty state when no reports have been requested", () => {
