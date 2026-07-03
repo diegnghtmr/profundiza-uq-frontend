@@ -1,5 +1,8 @@
 import { ApiRequestError } from "@/shared/api/client";
 
+/** Shown whenever we cannot safely surface a specific, catalogued detail. */
+const GENERIC_MESSAGE = "Something went wrong. Please try again.";
+
 /**
  * Friendly, user-facing copy for the API error `code`s the UI can surface.
  * Falls back to the envelope `message`, then a generic line, so the user never
@@ -18,13 +21,26 @@ const FRIENDLY_MESSAGES: Record<string, string> = {
   NOT_FOUND: "The requested resource was not found.",
 };
 
-/** Resolve any thrown value into a single human-readable line for a toast. */
+/**
+ * Resolve any thrown value into a single human-readable line for a toast.
+ *
+ * We only surface a backend `message` when it is safe: a catalogued business
+ * error always wins, and an un-catalogued detail is shown only for a genuine
+ * client-error envelope (status < 500 with a real backend `code`). For 5xx,
+ * the synthesized `UNKNOWN` code (which client.ts builds from raw `text()` for
+ * non-JSON bodies), or anything else, we return the generic line — so a 502
+ * nginx HTML page or a 500 stack trace never renders raw in a toast.
+ */
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiRequestError) {
-    return FRIENDLY_MESSAGES[error.code] ?? error.message ?? "Something went wrong.";
+    const friendly = FRIENDLY_MESSAGES[error.code];
+    if (friendly) return friendly;
+    const isSafeClientDetail =
+      error.status < 500 && error.code !== "UNKNOWN" && Boolean(error.message);
+    return isSafeClientDetail ? error.message : GENERIC_MESSAGE;
   }
   if (error instanceof Error && error.message) {
     return error.message;
   }
-  return "Something went wrong. Please try again.";
+  return GENERIC_MESSAGE;
 }

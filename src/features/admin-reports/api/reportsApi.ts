@@ -90,9 +90,13 @@ export const reportKeys = {
 // Queries
 // ---------------------------------------------------------------------------
 
-function fetchReports(semesterId: string): Promise<ReportExport[]> {
+function fetchReports(
+  semesterId: string,
+  signal?: AbortSignal,
+): Promise<ReportExport[]> {
   return fetchClient<ReportExportsPage>("/reports", {
     query: { semesterId },
+    signal,
   }).then((page) => page.items);
 }
 
@@ -103,7 +107,7 @@ function fetchReports(semesterId: string): Promise<ReportExport[]> {
 export function useReports(semesterId: string) {
   return useQuery({
     queryKey: reportKeys.list(semesterId),
-    queryFn: () => fetchReports(semesterId),
+    queryFn: ({ signal }) => fetchReports(semesterId, signal),
     enabled: semesterId !== "",
     refetchInterval: (query) => {
       const rows = query.state.data;

@@ -73,7 +73,10 @@ export const studentKeys = {
 /** A generous page size: the admin list is browsed, not paginated, for the MVP. */
 const LIST_PAGE_SIZE = 100;
 
-function fetchStudents(filters: StudentFilters): Promise<StudentsPage> {
+function fetchStudents(
+  filters: StudentFilters,
+  signal?: AbortSignal,
+): Promise<StudentsPage> {
   return fetchClient<StudentsPage>("/students", {
     query: {
       pageSize: LIST_PAGE_SIZE,
@@ -81,29 +84,34 @@ function fetchStudents(filters: StudentFilters): Promise<StudentsPage> {
       shift: filters.shift || undefined,
       status: filters.status || undefined,
     },
+    signal,
   });
 }
 
 export function useStudents(filters: StudentFilters) {
   return useQuery({
     queryKey: studentKeys.list(filters),
-    queryFn: () => fetchStudents(filters),
+    queryFn: ({ signal }) => fetchStudents(filters, signal),
     // Keep the previous page visible while a new filter request is in flight so
     // the table does not flash empty on every keystroke.
     placeholderData: (previous) => previous,
   });
 }
 
-function fetchRecords(studentId: string): Promise<AcademicRecord[]> {
+function fetchRecords(
+  studentId: string,
+  signal?: AbortSignal,
+): Promise<AcademicRecord[]> {
   return fetchClient<{ items: AcademicRecord[] }>(
     `/students/${studentId}/academic-records`,
+    { signal },
   ).then((res) => res.items);
 }
 
 export function useStudentRecords(studentId: string | null) {
   return useQuery({
     queryKey: studentKeys.records(studentId ?? ""),
-    queryFn: () => fetchRecords(studentId as string),
+    queryFn: ({ signal }) => fetchRecords(studentId as string, signal),
     enabled: studentId !== null,
   });
 }

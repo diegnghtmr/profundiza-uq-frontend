@@ -14,16 +14,20 @@ export const reviewKeys = {
 };
 
 /** Admin review queue for a semester. The page envelope is unwrapped to items. */
-function fetchReviewQueue(semesterId: string): Promise<AdminReviewQueueItem[]> {
+function fetchReviewQueue(
+  semesterId: string,
+  signal?: AbortSignal,
+): Promise<AdminReviewQueueItem[]> {
   return fetchClient<AdminReviewQueuePage>("/admin/review-queues", {
     query: { semesterId },
+    signal,
   }).then((p) => p.items);
 }
 
 export function useReviewQueue(semesterId: string) {
   return useQuery({
     queryKey: reviewKeys.list(semesterId),
-    queryFn: () => fetchReviewQueue(semesterId),
+    queryFn: ({ signal }) => fetchReviewQueue(semesterId, signal),
     enabled: semesterId !== "",
   });
 }
