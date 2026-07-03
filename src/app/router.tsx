@@ -73,8 +73,22 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="home" replace /> },
       { path: "home", element: <HomePage /> },
-      { path: "offerings", element: <OfferingsPage /> },
-      { path: "requests", element: <RequestsPage /> },
+      {
+        path: "offerings",
+        element: (
+          <RequireRole allowedRoles={["STUDENT"]}>
+            <OfferingsPage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: "requests",
+        element: (
+          <RequireRole allowedRoles={["STUDENT"]}>
+            <RequestsPage />
+          </RequireRole>
+        ),
+      },
       { path: "notifications", element: <NotificationsPage /> },
       {
         path: "review",

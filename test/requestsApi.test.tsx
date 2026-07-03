@@ -76,6 +76,63 @@ describe("useSubmitEnrollmentBatch", () => {
 
     await waitFor(() => expect(mockNotify.error).toHaveBeenCalledWith(error));
   });
+
+  it("reuses the same Idempotency-Key across retries of the same submit", async () => {
+    const error = new Error("timeout");
+    mockFetch.mockRejectedValueOnce(error);
+    mockFetch.mockRejectedValueOnce(error);
+
+    const { result } = renderHook(() => useSubmitEnrollmentBatch(), { wrapper });
+
+    result.current.mutate({ semesterId: "sem-1", offeringGroupIds: ["g1"] });
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+
+    // Retry the exact same logical submit after a lost/timed-out response.
+    result.current.mutate({ semesterId: "sem-1", offeringGroupIds: ["g1"] });
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+
+    const firstHeaders = mockFetch.mock.calls[0][1]?.headers as Record<
+      string,
+      string
+    >;
+    const secondHeaders = mockFetch.mock.calls[1][1]?.headers as Record<
+      string,
+      string
+    >;
+    expect(secondHeaders["Idempotency-Key"]).toBe(firstHeaders["Idempotency-Key"]);
+  });
+
+  it("rotates the Idempotency-Key after a confirmed success", async () => {
+    mockFetch.mockResolvedValueOnce({ items: [] });
+    mockFetch.mockResolvedValueOnce({ items: [] });
+
+    const { result } = renderHook(() => useSubmitEnrollmentBatch(), { wrapper });
+
+    await result.current.mutateAsync({
+      semesterId: "sem-1",
+      offeringGroupIds: ["g1"],
+    });
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+
+    // A new, distinct submit after a confirmed success must use a fresh key.
+    await result.current.mutateAsync({
+      semesterId: "sem-1",
+      offeringGroupIds: ["g2"],
+    });
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+
+    const firstHeaders = mockFetch.mock.calls[0][1]?.headers as Record<
+      string,
+      string
+    >;
+    const secondHeaders = mockFetch.mock.calls[1][1]?.headers as Record<
+      string,
+      string
+    >;
+    expect(secondHeaders["Idempotency-Key"]).not.toBe(
+      firstHeaders["Idempotency-Key"],
+    );
+  });
 });
 
 describe("useCancelRequest", () => {

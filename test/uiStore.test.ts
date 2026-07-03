@@ -45,3 +45,20 @@ describe("uiStore draft selection", () => {
     );
   });
 });
+
+describe("uiStore resetSession", () => {
+  beforeEach(reset);
+
+  it("wipes the draft and the selected semester so the next user starts clean", () => {
+    const store = useUiStore.getState();
+    store.toggleDraftGroup("g1");
+    store.setSelectedSemesterId("sem-42");
+    expect(useUiStore.getState().draftGroupIds).toHaveLength(1);
+    expect(useUiStore.getState().selectedSemesterId).toBe("sem-42");
+
+    useUiStore.getState().resetSession();
+
+    expect(useUiStore.getState().draftGroupIds).toEqual([]);
+    expect(useUiStore.getState().selectedSemesterId).toBe("");
+  });
+});

@@ -17,6 +17,14 @@ interface UiState {
   removeDraftGroup: (groupId: string) => void;
   clearDraft: () => void;
   isInDraft: (groupId: string) => boolean;
+
+  /**
+   * Wipe all per-session UI state (draft selection + selected semester). Must
+   * run on logout AND on implicit session loss (401 on /me) so a previous
+   * user's in-progress enrollment draft never leaks to the next person on a
+   * shared device.
+   */
+  resetSession: () => void;
 }
 
 export const useUiStore = create<UiState>((set, get) => ({
@@ -46,4 +54,6 @@ export const useUiStore = create<UiState>((set, get) => ({
   clearDraft: () => set({ draftGroupIds: [] }),
 
   isInDraft: (groupId) => get().draftGroupIds.includes(groupId),
+
+  resetSession: () => set({ draftGroupIds: [], selectedSemesterId: "" }),
 }));

@@ -7,6 +7,7 @@ import type {
   VerifyLoginRequest,
 } from "@/shared/api/types";
 import { notify } from "@/shared/lib/notify";
+import { useUiStore } from "@/shared/stores/uiStore";
 
 export const authKeys = {
   me: ["auth", "me"] as const,
@@ -71,6 +72,10 @@ export function useLogout() {
       setCsrfToken(null);
       qc.setQueryData(authKeys.me, null);
       qc.clear();
+      // Also wipe the Zustand UI store (enrollment draft, selected semester) so
+      // a previous user's in-progress selections never bleed into the next
+      // person's session on a shared device.
+      useUiStore.getState().resetSession();
     },
     onError: (error) => notify.error(error),
   });
