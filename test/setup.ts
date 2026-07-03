@@ -17,3 +17,15 @@ if (!window.matchMedia) {
     dispatchEvent: vi.fn(),
   }));
 }
+
+// jsdom does not implement ResizeObserver. Radix ScrollArea (and other
+// size-tracking primitives) observe element resize to compute
+// scrollbar/thumb geometry — provide a no-op mock so those components can
+// mount in tests without crashing.
+if (!window.ResizeObserver) {
+  window.ResizeObserver = class ResizeObserver {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  };
+}
