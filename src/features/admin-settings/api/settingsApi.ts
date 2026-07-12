@@ -95,3 +95,24 @@ export function useUpdateSetting() {
     onError: (error) => notify.error(error),
   });
 }
+
+/**
+ * Creates a new global setting. The PATCH endpoint is an upsert, so creating a
+ * setting is the same request keyed by a brand-new key; only the success toast
+ * differs (it announces creation rather than an update).
+ */
+export function useCreateSetting() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ key, value, reason }: UpdateSettingInput) =>
+      fetchClient<GlobalSetting>(`/admin/global-settings/${key}`, {
+        method: "PATCH",
+        body: { value, reason },
+      }),
+    onSuccess: (setting) => {
+      qc.invalidateQueries({ queryKey: settingsKeys.all });
+      notify.success(`Setting "${setting.key}" created.`);
+    },
+    onError: (error) => notify.error(error),
+  });
+}

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, Dialog, Input, Select, Spinner } from "@/shared/components/ui";
@@ -40,6 +40,7 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
   const createStudent = useCreateStudent();
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors },
@@ -97,14 +98,22 @@ export function AddStudentDialog({ open, onOpenChange }: AddStudentDialogProps) 
             error={errors.documentNumber?.message}
             {...register("documentNumber")}
           />
-          <Select
-            label="Shift"
-            options={[
-              { value: "DAY", label: "Day" },
-              { value: "NIGHT", label: "Night" },
-            ]}
-            error={errors.academicShift?.message}
-            {...register("academicShift")}
+          <Controller
+            control={control}
+            name="academicShift"
+            render={({ field, fieldState }) => (
+              <Select
+                label="Shift"
+                options={[
+                  { value: "DAY", label: "Day" },
+                  { value: "NIGHT", label: "Night" },
+                ]}
+                value={field.value}
+                onChange={field.onChange}
+                name={field.name}
+                error={fieldState.error?.message}
+              />
+            )}
           />
         </div>
         <Input

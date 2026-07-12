@@ -34,7 +34,10 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? errorId : undefined}
           className={cn(
-            "w-full rounded-2xl bg-snow p-4 text-body text-ink-black",
+            // min-h keeps the field from being dragged smaller than a usable,
+            // non-clipping height; resize-y drops the horizontal handle so the
+            // control can never break the surrounding layout width.
+            "w-full min-h-20 resize-y rounded-2xl bg-snow p-4 text-body text-ink-black",
             "placeholder:text-slate ring-1 ring-inset ring-ink-black/10",
             "transition-shadow duration-200 ease-out",
             "focus:outline-none focus:ring-2 focus:ring-ink-black/25",

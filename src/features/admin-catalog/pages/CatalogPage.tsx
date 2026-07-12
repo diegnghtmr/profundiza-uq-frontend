@@ -3,7 +3,7 @@ import {
   Button,
   Card,
   FilterPill,
-  Input,
+  SearchField,
   SegmentedControl,
   Spinner,
 } from "@/shared/components/ui";
@@ -92,18 +92,22 @@ export function CatalogPage() {
         <Button onClick={() => setCreateOpen(true)}>Create elective</Button>
       </header>
 
-      <SegmentedControl options={TABS} value={tab} onChange={setTab} />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <SegmentedControl options={TABS} value={tab} onChange={setTab} />
+        {tab === "electives" ? (
+          <SearchField
+            label="Search electives or areas"
+            placeholder="Search electives or areas…"
+            value={search}
+            onChange={setSearch}
+            className="w-full sm:w-72"
+          />
+        ) : null}
+      </div>
 
       {tab === "electives" ? (
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-4">
-            <Input
-              placeholder="Search electives or areas…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-11 max-w-sm"
-              aria-label="Search electives or areas"
-            />
             <div className="flex flex-wrap gap-2">
               <FilterPill active={area === "ALL"} onClick={() => setArea("ALL")}>
                 All areas

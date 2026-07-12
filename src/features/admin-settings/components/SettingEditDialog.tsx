@@ -1,72 +1,134 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   Button,
+  ChipsInput,
   Dialog,
   Input,
+  Select,
   Spinner,
   Switch,
   Textarea,
 } from "@/shared/components/ui";
 import {
   MIN_REASON_LENGTH,
+  useCreateSetting,
   useUpdateSetting,
   type GlobalSetting,
   type SettingValue,
 } from "../api/settingsApi";
 
 /** Editor mode derived from the current value's runtime type. */
-type ValueKind = "boolean" | "number" | "string" | "json";
+type ValueKind = "boolean" | "number" | "string" | "stringList" | "json";
+
+/** Options for the create-mode value-type selector (labels are user-facing). */
+const VALUE_KIND_OPTIONS: ReadonlyArray<{ value: ValueKind; label: string }> = [
+  { value: "string", label: "Text" },
+  { value: "stringList", label: "Text list" },
+  { value: "number", label: "Number" },
+  { value: "boolean", label: "Boolean" },
+  { value: "json", label: "JSON" },
+];
 
 function kindOf(value: SettingValue): ValueKind {
   if (typeof value === "boolean") return "boolean";
   if (typeof value === "number") return "number";
   if (typeof value === "string") return "string";
+  if (Array.isArray(value) && value.every((v) => typeof v === "string")) {
+    return "stringList";
+  }
   return "json";
 }
 
-/**
- * Edits a single global setting. The value is JSONB, so the control adapts to
- * the value's type: a toggle for booleans, a typed field for numbers/strings,
- * and a raw-JSON textarea for objects/arrays. A reason (>= 3 chars) is required.
- */
-export function SettingEditDialog({
-  setting,
-  open,
-  onOpenChange,
-}: {
+type Mode = "edit" | "create";
+
+export interface SettingEditDialogProps {
+  mode: Mode;
+  /** The setting being edited; ignored (pass `null`) in create mode. */
   setting: GlobalSetting | null;
+  /** Existing keys, used in create mode to reject collisions. */
+  existingKeys: string[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
-}) {
-  const updateSetting = useUpdateSetting();
-  const kind = useMemo<ValueKind>(
-    () => (setting ? kindOf(setting.value) : "json"),
-    [setting],
-  );
+}
 
+/**
+ * Creates or edits a single global setting. The value is JSONB, so the control
+ * adapts to the value's type: a toggle for booleans, a typed field for
+ * numbers/strings, and a raw-JSON textarea for objects/arrays. In edit mode the
+ * kind is inferred from the current value; in create mode the user picks it and
+ * also supplies the key. A reason (>= MIN_REASON_LENGTH) is always required.
+ */
+export function SettingEditDialog({
+  mode,
+  setting,
+  existingKeys,
+  open,
+  onOpenChange,
+}: SettingEditDialogProps) {
+  const updateSetting = useUpdateSetting();
+  const createSetting = useCreateSetting();
+  const mutation = mode === "create" ? createSetting : updateSetting;
+
+  const editKind: ValueKind = setting ? kindOf(setting.value) : "json";
+
+  const [key, setKey] = useState("");
+  const [selectedKind, setSelectedKind] = useState<ValueKind>("string");
   const [draft, setDraft] = useState("");
+  const [chips, setChips] = useState<string[]>([]);
   const [reason, setReason] = useState("");
   const [valueError, setValueError] = useState<string | null>(null);
 
-  // Reset the form whenever a different setting opens the dialog. Done during
-  // render (React's "adjust state on prop change" pattern) instead of an effect.
+  // In create mode the kind is user-selected; in edit mode it is inferred.
+  const kind: ValueKind = mode === "create" ? selectedKind : editKind;
+
+  // Reset the form whenever the dialog opens or the mode/setting changes. Done
+  // during render (React's "adjust state on prop change" pattern) instead of an
+  // effect, for both modes.
   const [sync, setSync] = useState<{
     open: boolean;
+    mode: Mode;
     setting: GlobalSetting | null;
-    kind: ValueKind;
-  }>({ open: false, setting: null, kind: "json" });
-  if (sync.open !== open || sync.setting !== setting || sync.kind !== kind) {
-    setSync({ open, setting, kind });
-    if (open && setting) {
+  }>({ open: false, mode, setting: null });
+  if (sync.open !== open || sync.mode !== mode || sync.setting !== setting) {
+    setSync({ open, mode, setting });
+    if (open) {
+      setKey("");
       setReason("");
       setValueError(null);
-      setDraft(initialDraft(setting.value, kind));
+      if (mode === "create") {
+        setSelectedKind("string");
+        setDraft("");
+        setChips([]);
+      } else if (setting) {
+        setSelectedKind(editKind);
+        setDraft(initialDraft(setting.value, editKind));
+        setChips(
+          editKind === "stringList" ? (setting.value as string[]) : [],
+        );
+      }
     }
   }
 
+  const trimmedKey = key.trim();
+  const keyCollision = existingKeys.includes(trimmedKey);
+  const keyValid = trimmedKey.length > 0 && !keyCollision;
   const reasonValid = reason.trim().length >= MIN_REASON_LENGTH;
+  const formValid = reasonValid && (mode === "edit" || keyValid);
+
+  // Switching the value type in create mode resets the draft to a sane default
+  // for the new kind (handled here, not at render time).
+  function handleKindChange(next: string) {
+    const nextKind = next as ValueKind;
+    setSelectedKind(nextKind);
+    setDraft(nextKind === "boolean" ? "false" : "");
+    setChips([]);
+    setValueError(null);
+  }
 
   function buildValue(): { ok: true; value: SettingValue } | { ok: false } {
+    if (kind === "stringList") {
+      return { ok: true, value: chips };
+    }
     if (kind === "boolean") {
       return { ok: true, value: draft === "true" };
     }
@@ -94,41 +156,73 @@ export function SettingEditDialog({
     }
   }
 
-  function handleSave() {
-    if (!setting || !reasonValid) return;
+  function handleSubmit() {
+    if (!formValid) return;
     setValueError(null);
     const result = buildValue();
     if (!result.ok) return;
-    updateSetting.mutate(
-      { key: setting.key, value: result.value, reason: reason.trim() },
+    const targetKey = mode === "create" ? trimmedKey : setting?.key;
+    if (!targetKey) return;
+    mutation.mutate(
+      { key: targetKey, value: result.value, reason: reason.trim() },
       { onSuccess: () => onOpenChange(false) },
     );
   }
+
+  const title =
+    mode === "create" ? "New setting" : setting ? setting.key : "Edit setting";
+  const description =
+    mode === "create"
+      ? "Create a new global configuration value. The change is recorded in the audit trail."
+      : setting?.description ||
+        "Update the value. The change is recorded in the audit trail.";
 
   return (
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      title={setting ? setting.key : "Edit setting"}
-      description={
-        setting?.description ||
-        "Update the value. The change is recorded in the audit trail."
-      }
+      title={title}
+      description={description}
       footer={
         <>
           <Button variant="soft" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button
-            disabled={!reasonValid || updateSetting.isPending}
-            onClick={handleSave}
-          >
-            {updateSetting.isPending ? <Spinner /> : "Save changes"}
+          <Button disabled={!formValid || mutation.isPending} onClick={handleSubmit}>
+            {mutation.isPending ? (
+              <Spinner />
+            ) : mode === "create" ? (
+              "Create setting"
+            ) : (
+              "Save changes"
+            )}
           </Button>
         </>
       }
     >
       <div className="flex flex-col gap-5">
+        {mode === "create" ? (
+          <>
+            <Input
+              label="Key"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              placeholder="e.g. enrollment.max_electives"
+              error={
+                trimmedKey.length > 0 && keyCollision
+                  ? "A setting with this key already exists."
+                  : undefined
+              }
+            />
+            <Select
+              label="Value type"
+              options={VALUE_KIND_OPTIONS}
+              value={selectedKind}
+              onChange={handleKindChange}
+            />
+          </>
+        ) : null}
+
         {kind === "boolean" ? (
           <Switch
             checked={draft === "true"}
@@ -149,6 +243,13 @@ export function SettingEditDialog({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             error={valueError ?? undefined}
+          />
+        ) : kind === "stringList" ? (
+          <ChipsInput
+            label="Value"
+            value={chips}
+            onChange={setChips}
+            placeholder="Add a value and press Enter"
           />
         ) : (
           <Textarea

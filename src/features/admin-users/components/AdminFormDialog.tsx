@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, Dialog, Input, Select, Spinner } from "@/shared/components/ui";
@@ -82,6 +82,7 @@ export function AdminFormDialog({
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors },
@@ -178,19 +179,35 @@ export function AdminFormDialog({
           </div>
         )}
 
-        <Select
-          label="Role"
-          options={ROLE_OPTIONS}
-          error={errors.role?.message}
-          {...register("role")}
+        <Controller
+          control={control}
+          name="role"
+          render={({ field, fieldState }) => (
+            <Select
+              label="Role"
+              options={ROLE_OPTIONS}
+              value={field.value}
+              onChange={field.onChange}
+              name={field.name}
+              error={fieldState.error?.message}
+            />
+          )}
         />
 
         {mode === "edit" ? (
-          <Select
-            label="Status"
-            options={STATUS_OPTIONS}
-            error={errors.status?.message}
-            {...register("status")}
+          <Controller
+            control={control}
+            name="status"
+            render={({ field, fieldState }) => (
+              <Select
+                label="Status"
+                options={STATUS_OPTIONS}
+                value={field.value}
+                onChange={field.onChange}
+                name={field.name}
+                error={fieldState.error?.message}
+              />
+            )}
           />
         ) : null}
       </form>

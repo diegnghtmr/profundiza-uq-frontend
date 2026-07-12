@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import {
-  Input,
+  SearchField,
   SegmentedControl,
   FilterPill,
   DataState,
@@ -73,12 +73,12 @@ export function OfferingsPage() {
 
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <Input
+          <SearchField
+            label="Search electives or areas"
             placeholder="Search electives or areas…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-11 max-w-sm flex-1"
-            aria-label="Search electives or areas"
+            onChange={setSearch}
+            className="w-full min-w-[16rem] flex-1 sm:max-w-md"
           />
           <SegmentedControl options={SHIFT_OPTIONS} value={shift} onChange={setShift} />
           <FilterPill

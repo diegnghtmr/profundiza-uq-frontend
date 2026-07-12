@@ -81,11 +81,6 @@ export function DecisionDialog({
   const valid = reasonValid && targetGroupValid;
   const title = decisionType ? DECISION_TITLES[decisionType] : "Decision";
 
-  const targetGroupOptions: SelectOption[] = [
-    { value: TARGET_GROUP_PLACEHOLDER, label: "Select a group…" },
-    ...targetGroups,
-  ];
-
   return (
     <Dialog
       open={open}
@@ -127,9 +122,10 @@ export function DecisionDialog({
             {needsTargetGroup ? (
               <Select
                 label="Target group"
-                options={targetGroupOptions}
+                options={targetGroups}
                 value={targetGroupId}
-                onChange={(e) => setTargetGroupId(e.target.value)}
+                onChange={setTargetGroupId}
+                placeholder="Select a group…"
               />
             ) : null}
             <Textarea

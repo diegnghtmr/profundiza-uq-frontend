@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Badge,
@@ -12,6 +12,7 @@ import {
   EmptyState,
   Icon,
   SegmentedControl,
+  Select,
   StatusBadge,
   priorityLabel,
 } from "@/shared/components/ui";
@@ -238,6 +239,7 @@ function GroupPanel({
   onSelect: (id: string) => void;
   onAdjustCapacity: () => void;
 }) {
+  const groupSelectId = useId();
   const g = selected.group;
   const accepted = Math.max(0, g.acceptedCount ?? 0);
   const capacity = Math.max(0, g.capacity);
@@ -249,22 +251,21 @@ function GroupPanel({
   return (
     <Card className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-caption font-medium uppercase tracking-wide text-slate">
-            Reviewing group
-          </span>
-          <select
-            value={selected.id}
-            onChange={(e) => onSelect(e.target.value)}
-            className="h-11 min-w-[280px] rounded-2xl bg-snow px-4 text-body-sm text-ink-black ring-1 ring-inset ring-ink-black/10 focus:outline-none focus:ring-2 focus:ring-ink-black/25"
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor={groupSelectId}
+            className="text-caption font-medium uppercase tracking-wide text-slate"
           >
-            {buckets.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            Reviewing group
+          </label>
+          <Select
+            id={groupSelectId}
+            options={buckets.map((b) => ({ value: b.id, label: b.label }))}
+            value={selected.id}
+            onChange={onSelect}
+            className="min-w-[280px]"
+          />
+        </div>
         <Button variant="soft" size="sm" onClick={onAdjustCapacity}>
           Adjust capacity
         </Button>

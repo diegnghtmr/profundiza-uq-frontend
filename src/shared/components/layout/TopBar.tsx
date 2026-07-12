@@ -42,7 +42,7 @@ export function TopBar() {
         {windowOpen ? (
           <Badge dotColor="#fa3d1d">
             <span className="text-ash">Window closes in</span>
-            <span className="font-medium tabular-nums text-ink-black">
+            <span className="font-mono font-medium tabular-nums text-ink-black">
               {countdown}
             </span>
           </Badge>

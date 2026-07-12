@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
@@ -51,6 +51,7 @@ export function StudentDetailDialog({
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors },
@@ -69,10 +70,10 @@ export function StudentDetailDialog({
     });
   }
 
-  const semesterOptions = [
-    { value: "", label: "Select a semester…" },
-    ...(semesters ?? []).map((s) => ({ value: s.id, label: s.name })),
-  ];
+  const semesterOptions = (semesters ?? []).map((s) => ({
+    value: s.id,
+    label: s.name,
+  }));
 
   return (
     <Dialog
@@ -155,11 +156,20 @@ export function StudentDetailDialog({
               <h3 className="text-body-sm font-medium text-graphite">
                 Add a record
               </h3>
-              <Select
-                label="Semester"
-                options={semesterOptions}
-                error={errors.semesterId?.message}
-                {...register("semesterId")}
+              <Controller
+                control={control}
+                name="semesterId"
+                render={({ field, fieldState }) => (
+                  <Select
+                    label="Semester"
+                    options={semesterOptions}
+                    value={field.value}
+                    onChange={field.onChange}
+                    name={field.name}
+                    placeholder="Select a semester…"
+                    error={fieldState.error?.message}
+                  />
+                )}
               />
               <Input
                 label="Notes"

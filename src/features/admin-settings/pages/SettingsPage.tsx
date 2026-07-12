@@ -4,20 +4,30 @@ import { cn } from "@/shared/lib/cn";
 import { SettingEditDialog } from "../components/SettingEditDialog";
 import { useSettings, type GlobalSetting, type SettingValue } from "../api/settingsApi";
 
+type DialogState =
+  | { mode: "closed" }
+  | { mode: "edit"; setting: GlobalSetting }
+  | { mode: "create" };
+
 export function SettingsPage() {
   const { data: settings, isLoading, isError } = useSettings();
-  const [editing, setEditing] = useState<GlobalSetting | null>(null);
+  const [dialog, setDialog] = useState<DialogState>({ mode: "closed" });
+
+  const existingKeys = (settings ?? []).map((s) => s.key);
 
   return (
     <section className="flex flex-col gap-8">
-      <header className="flex flex-col gap-3">
-        <h1 className="text-heading font-light tracking-[-2px] text-ink-black">
-          Settings
-        </h1>
-        <p className="max-w-2xl text-subheading text-graphite">
-          Global configuration values for the platform. Every change is recorded
-          in the audit trail with a reason.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-col gap-3">
+          <h1 className="text-heading font-light tracking-[-2px] text-ink-black">
+            Settings
+          </h1>
+          <p className="max-w-2xl text-subheading text-graphite">
+            Global configuration values for the platform. Every change is
+            recorded in the audit trail with a reason.
+          </p>
+        </div>
+        <Button onClick={() => setDialog({ mode: "create" })}>New setting</Button>
       </header>
 
       {isLoading ? (
@@ -29,8 +39,11 @@ export function SettingsPage() {
           Could not load global settings. Please try again.
         </Card>
       ) : !settings || settings.length === 0 ? (
-        <Card className="py-6 text-body-sm text-slate">
-          No global settings are configured yet.
+        <Card className="flex flex-col items-start gap-4 py-6 text-body-sm text-slate">
+          <span>No global settings are configured yet.</span>
+          <Button size="sm" onClick={() => setDialog({ mode: "create" })}>
+            New setting
+          </Button>
         </Card>
       ) : (
         <Card className="overflow-hidden p-0">
@@ -69,7 +82,7 @@ export function SettingsPage() {
                     <Button
                       variant="soft"
                       size="sm"
-                      onClick={() => setEditing(setting)}
+                      onClick={() => setDialog({ mode: "edit", setting })}
                     >
                       Edit
                     </Button>
@@ -82,9 +95,11 @@ export function SettingsPage() {
       )}
 
       <SettingEditDialog
-        setting={editing}
-        open={editing !== null}
-        onOpenChange={(open) => !open && setEditing(null)}
+        mode={dialog.mode === "create" ? "create" : "edit"}
+        setting={dialog.mode === "edit" ? dialog.setting : null}
+        existingKeys={existingKeys}
+        open={dialog.mode !== "closed"}
+        onOpenChange={(open) => !open && setDialog({ mode: "closed" })}
       />
     </section>
   );

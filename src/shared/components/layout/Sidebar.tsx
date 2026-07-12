@@ -28,7 +28,7 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col gap-6 border-r border-ink-black/[0.06] px-5 py-6">
+    <aside className="sticky top-[60px] flex h-[calc(100dvh-60px)] w-64 shrink-0 flex-col gap-6 self-start overflow-y-auto border-r border-ink-black/[0.06] px-5 py-6">
       <nav className="flex flex-col gap-1">
         {items.map((item) => {
           const count = item.badgeKey ? badgeCounts[item.badgeKey] : 0;

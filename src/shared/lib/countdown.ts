@@ -10,8 +10,10 @@ function pad(value: number): string {
 }
 
 /**
- * Format a remaining duration (ms) as a compact countdown. Under a day it reads
- * `H:MM:SS` (matching the prototype); a day or more prepends `Nd`. Clamps to 0.
+ * Format a remaining duration (ms) as a compact countdown, always `HH:MM:SS`
+ * (a day or more prepends `Nd`). Every field is zero-padded so the string keeps
+ * a constant character count — paired with `tabular-nums`, the rendered width
+ * never shifts as the timer ticks. Clamps to 0.
  */
 export function formatCountdown(msRemaining: number): string {
   const total = Math.max(0, Math.floor(msRemaining));
@@ -20,10 +22,8 @@ export function formatCountdown(msRemaining: number): string {
   const minutes = Math.floor((total % HOUR) / MINUTE);
   const seconds = Math.floor((total % MINUTE) / SECOND);
 
-  if (days > 0) {
-    return `${days}d ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-  }
-  return `${hours}:${pad(minutes)}:${pad(seconds)}`;
+  const clock = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+  return days > 0 ? `${days}d ${clock}` : clock;
 }
 
 /**

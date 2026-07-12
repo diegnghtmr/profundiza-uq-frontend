@@ -7,8 +7,9 @@ import { useActiveSemester } from "@/shared/api/semestersApi";
 import { useUiStore } from "@/shared/stores/uiStore";
 
 /**
- * Authenticated application frame: sticky frosted TopBar above a fixed Sidebar
- * and a scrolling content column rendered through the router Outlet. Also keeps
+ * Authenticated application frame: sticky frosted TopBar above a sticky Sidebar
+ * (pinned to the viewport, never growing with page content) and a scrolling
+ * content column rendered through the router Outlet. Also keeps
  * the selected semester in sync with the active one resolved from the backend.
  */
 export function AppShell() {

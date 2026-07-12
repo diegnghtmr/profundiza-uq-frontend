@@ -127,7 +127,7 @@ export function ReportsPage() {
               <Select
                 label="Report type"
                 value={reportType}
-                onChange={(e) => setReportType(e.target.value as ReportType)}
+                onChange={(v) => setReportType(v as ReportType)}
                 options={REPORT_TYPE_OPTIONS}
               />
             </div>
@@ -179,7 +179,7 @@ export function ReportsPage() {
                   <tr className="border-b border-ink-black/[0.06] text-caption uppercase tracking-wide text-slate">
                     <Th>Type</Th>
                     <Th>Format</Th>
-                    <Th>Status</Th>
+                    <Th className="text-center">Status</Th>
                     <Th>Requested</Th>
                     <Th className="text-right">File</Th>
                   </tr>
@@ -206,8 +206,8 @@ function ReportRow({ report }: { report: ReportExport }) {
         {REPORT_TYPE_LABELS[report.reportType] ?? report.reportType}
       </Td>
       <Td className="text-body-sm text-graphite">{report.format}</Td>
-      <Td>
-        <div className="flex flex-col gap-1">
+      <Td className="text-center">
+        <div className="flex flex-col items-center gap-1">
           <Badge tone={visual.tone} dotColor={visual.dotColor}>
             {visual.label}
           </Badge>
