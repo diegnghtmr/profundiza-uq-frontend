@@ -19,6 +19,46 @@ vi.mock("@/features/admin-catalog/api/catalogAdminApi", () => ({
   useAdjustCapacity: vi.fn(),
 }));
 
+// The real Select is a Radix listbox that opens a portal and recurses under
+// jsdom. Swap in a native <select> honoring the same contract (accessible label,
+// options, string-value onChange, placeholder) so the dialog's behavior — target
+// option scoping, value selection, submit payload — stays under test without the
+// portal. Every other UI primitive stays real.
+vi.mock("@/shared/components/ui", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/shared/components/ui")>();
+  return {
+    ...actual,
+    Select: ({
+      label,
+      options,
+      value,
+      onChange,
+      placeholder,
+    }: {
+      label?: string;
+      options: ReadonlyArray<{ value: string; label: string }>;
+      value: string;
+      onChange: (value: string) => void;
+      placeholder?: string;
+    }) => (
+      <select
+        aria-label={label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        {placeholder !== undefined ? (
+          <option value="">{placeholder}</option>
+        ) : null}
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    ),
+  };
+});
+
 import {
   useReviewQueue,
   useSubmitDecision,

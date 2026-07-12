@@ -7,12 +7,14 @@ import userEvent from "@testing-library/user-event";
 vi.mock("@/features/admin-settings/api/settingsApi", () => ({
   useSettings: vi.fn(),
   useUpdateSetting: vi.fn(),
+  useCreateSetting: vi.fn(),
   MIN_REASON_LENGTH: 3,
 }));
 
 import {
   useSettings,
   useUpdateSetting,
+  useCreateSetting,
   type GlobalSetting,
 } from "@/features/admin-settings/api/settingsApi";
 import { SettingsPage } from "@/features/admin-settings/pages/SettingsPage";
@@ -42,6 +44,12 @@ beforeEach(() => {
     mutate: vi.fn(),
     isPending: false,
   } as unknown as ReturnType<typeof useUpdateSetting>);
+  // The dialog calls useCreateSetting unconditionally (create mode), so it must
+  // return a usable mutation object even for the edit-mode tests below.
+  vi.mocked(useCreateSetting).mockReturnValue({
+    mutate: vi.fn(),
+    isPending: false,
+  } as unknown as ReturnType<typeof useCreateSetting>);
 });
 
 describe("SettingsPage", () => {
