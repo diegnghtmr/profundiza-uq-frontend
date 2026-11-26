@@ -112,6 +112,10 @@ src/styles/   Tailwind theme and global styles
 test/         Shared test setup and smoke tests
 ```
 
+## Documentation
+
+- [Frontend reference](docs/frontend-reference.md) — SIPP-UQ feature map, route roles, form conventions, and design system.
+
 ## Related repositories
 
 - [profundiza-uq-backend](https://github.com/diegnghtmr/profundiza-uq-backend) — enrollment, session identity, group capacity, notifications, and reports.
