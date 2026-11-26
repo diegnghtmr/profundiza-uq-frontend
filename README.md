@@ -1,121 +1,121 @@
-# Profundiza UQ — Frontend (SIPP-UQ)
+<!-- markdownlint-disable-next-line MD041 -->
+<div align="center">
 
-Web client for the professional-electives enrollment system at Universidad del
-Quindío. Every screen talks to the real backend — there is no mock data path.
-Built on a custom design system: frosted glass, a monochrome surface with a
-single spectrum gradient used only as ambient glow, generous radii, and neutral
-(non-saturated) buttons and badges.
+<h1>Profundiza UQ · Web App</h1>
 
-## Stack
+<p><strong>Plan, request, and review professional electives at Universidad del Quindío.</strong></p>
 
-React 19 · TypeScript · Vite · Tailwind CSS v4 · TanStack Query · Zustand ·
-React Hook Form + Zod · React Router v7 · Radix (Dialog) · Vitest + Testing
-Library.
+<p>
+<a href="https://github.com/diegnghtmr/profundiza-uq-frontend/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/diegnghtmr/profundiza-uq-frontend/ci.yml?branch=main&amp;style=for-the-badge&amp;labelColor=1F1F28&amp;label=CI" alt="CI"></a>
+<img src="https://img.shields.io/badge/React-19-E0C15A?style=for-the-badge&amp;labelColor=1F1F28" alt="React 19">
+<img src="https://img.shields.io/badge/TypeScript-5.9-E0C15A?style=for-the-badge&amp;labelColor=1F1F28" alt="TypeScript 5.9">
+<img src="https://img.shields.io/badge/Vite-6-E0C15A?style=for-the-badge&amp;labelColor=1F1F28" alt="Vite 6">
+<a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-7FB4CA?style=for-the-badge&amp;labelColor=1F1F28" alt="License: MIT"></a>
+</p>
 
-## Run
+<p>
+<a href="https://diegnghtmr.me/en/work/profundiza-uq/"><strong>Case study</strong></a> &bull;
+<a href="#quick-start"><strong>Quick start</strong></a> &bull;
+<a href="#architecture"><strong>Architecture</strong></a> &bull;
+<a href="https://github.com/diegnghtmr/profundiza-uq-backend"><strong>Backend repo</strong></a>
+</p>
 
-```bash
-pnpm install
-pnpm dev          # http://localhost:5173, proxies /api → :8080
-pnpm build        # type-check (tsc -b) + production bundle
-pnpm test         # Vitest
+</div>
+
+<p align="center"><img width="100%" alt="Cloud Computing elective with its schedule, remaining places, prerequisites, and Submit plan button" src="docs/assets/offerings-plan.png"></p>
+
+Before an enrollment window closes, students need to compare elective groups and know what happened after they applied. Profundiza UQ lets them assemble a plan, submit their selections, and track each request separately. Staff use the same application to work through group-specific review queues and record decisions.
+
+## Features
+
+- **Email sign-in.** Students and staff verify a one-time code; navigation follows the role returned by the API.
+- **Offerings and plan.** Inspect schedules, shifts, prerequisites, and capacity, then submit up to four selections as a batch.
+- **Request tracking.** See per-group status and arrival order, cancel eligible requests, and read notifications.
+- **Staff review.** View the queue by offering group, inspect its capacity and priority tiers, and record a decision with a reason.
+- **Catalog and administration.** Manage electives, groups, prerequisites, capacity, and student records; request report exports and download completed files.
+- **Super-administrator settings.** Manage administrative users and global settings from role-protected routes.
+
+## Preview
+
+![Student request list showing arrival positions, acceptances, a request under review, and a waitlist entry](docs/assets/my-requests.png)
+
+Submitting a plan does not mean every selection is accepted. My Requests shows the outcome for each group.
+
+![Staff queue with group capacity, a direct request, and separate waitlists by shift](docs/assets/review-queue.png)
+
+Staff work through direct and waitlisted requests for a selected group.
+
+## Quick start
+
+Use Node.js **22** and pnpm **11**, as in CI. Start the [Go API](https://github.com/diegnghtmr/profundiza-uq-backend#quick-start) and its PostgreSQL and SMTP dependencies first. Load the backend's local seed if you need ready-to-use student and staff accounts.
+
+```sh
+git clone https://github.com/diegnghtmr/profundiza-uq-frontend.git
+cd profundiza-uq-frontend
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
-Or run the whole stack (frontend, backend, postgres, mailpit) from the project
-root with `docker compose up --build` — the frontend image serves the production
-build through nginx and reverse-proxies `/api` to the backend.
+Open <http://localhost:5173/login>. Enter a local demo email, select **Send code**, then enter the emailed code and select **Verify**. If using Mailpit on its usual local UI port, read the code at <http://localhost:8025>. The UI has no bypass for code verification.
 
-### Environment
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `VITE_API_URL` | Browser API base URL; leave unset to use the same-origin proxy. | `/api/v1` |
+| `VITE_PROXY_TARGET` | Backend address used by the Vite process for `/api` requests. | `http://localhost:8080` |
 
-| Variable       | Default   | Purpose                                    |
-| -------------- | --------- | ------------------------------------------ |
-| `VITE_API_URL` | `/api/v1` | Backend base URL (same-origin by default). |
+`pnpm build` type-checks the app and produces the static bundle. The [Dockerfile](Dockerfile) serves it through nginx; [nginx.conf](nginx.conf) forwards `/api` unchanged to `backend:8080` and falls back to `index.html` for client-side routes. Use that service name in the deployment network, or configure an equivalent same-origin reverse proxy so cookie sessions work without cross-origin requests.
 
-The Vite dev server proxies `/api` → `http://localhost:8080` (see
-`vite.config.ts`), so the session cookie stays same-origin (no CORS) and
-`VITE_API_URL` can remain `/api/v1`. Override only if the backend lives
-elsewhere: copy `.env.example` to `.env` and set a full URL.
+## Architecture
 
-### Try it
+Every runtime screen talks to the real API. The API enforces roles and owns enrollment decisions; `RequireAuth` and `RequireRole` control browser route access from the identity returned by `/me`. Route modules load on demand. Feature-owned queries and components share the API client, role-aware navigation, and UI primitives.
 
-1. Start the backend (`cd .. && docker compose up -d`, serves `:8080`).
-2. Open `/login`, enter an institutional email → **Send code** → enter the code
-   emailed to you (Mailpit UI at `:8025` locally) → **Verify**. Auth is
-   passwordless OTP; there are no dev shortcuts — the emailed code is required.
-3. The navigation you see is driven by your **real role** (from `GET /me`):
-   students get Home / Offerings / My Requests / Notifications; admins get the
-   Review Queue, Catalog, Students, Reports, and (super-admins) Admins /
-   Settings. Route access is independently enforced by `RequireRole`.
-
-## Structure (feature-first)
-
-```
-src/
-  app/                  # App root, router (lazy routes), RequireAuth / RequireRole guards
-  styles/               # theme.css (Tailwind v4 @theme tokens) + global.css
-  shared/
-    api/                # OpenAPI types, fetchClient, queryClient, cross-feature hooks
-    components/
-      ui/               # Button, Card, Badge/StatusBadge, Input, Select, Textarea,
-                        #   Spinner, Dialog, FilterPill, SegmentedControl, Toaster
-      layout/           # AppShell, TopBar, Sidebar, Logo
-    config/             # navigation per role
-    lib/                # cn(), apiErrors, requestStats, countdown
-    stores/             # uiStore (selected semester + plan draft), toastStore
-  features/
-    auth/               # passwordless OTP login
-    dashboard/          # Home (greeting, live window countdown, stats, recent requests)
-    catalog/            # available offerings, prerequisites, plan draft + submit
-    enrollment/         # My Requests + cancel
-    notifications/      # notifications list + mark read
-    admin-review/       # group-scoped Review Queue with capacity header + decisions
-    admin-catalog/      # electives, offerings, groups, prerequisites, capacity
-    admin-students/     # students list, add, bulk import, academic records
-    admin-users/        # administrators (super-admin)
-    admin-reports/      # async report requests + downloads
-    admin-settings/     # global settings (super-admin)
-test/                   # Vitest component/store/page smoke tests
+```mermaid
+flowchart LR
+    U["Students and program staff"] --> F["profundiza-uq-frontend: React routes"]
+    F --> Q["TanStack Query: identity and server data"]
+    F --> S["Zustand: semester and unsent plan"]
+    Q -->|"HTTP /api/v1 via Vite or nginx"| B["profundiza-uq-backend: Go API"]
+    B --> D["PostgreSQL: requests and sessions"]
+    B --> E["SMTP: sign-in codes and updates"]
 ```
 
-Each feature owns its `api/` (query hooks), `components/`, and `pages/`.
-Cross-feature code lives under `src/shared`. A container/presentational split is
-used where it helps (e.g. `OfferingsPage` owns filter state; `OfferingCard` is
-presentational).
+### Conventions
 
-## Conventions
+TanStack Query owns server state, including `/me`; Zustand stores selected semester and unsent plan state, not identity. React Hook Form and Zod validate forms with labeled inputs and accessible errors; pending mutations disable resubmission and surface API errors. The Tailwind theme uses DM Sans from Google Fonts, monochrome controls and status badges, and a spectrum gradient for ambient glow and small accents only.
 
-- **Server state lives in TanStack Query, never Zustand.** Identity is
-  `useCurrentUser` (`GET /me`) — the single source of truth. `uiStore` holds only
-  client state (selected semester, enrollment-plan draft).
-- **Auth & RBAC.** `RequireAuth` gates the app on the resolved `/me` user;
-  `RequireRole` guards admin routes; the sidebar renders navigation from the real
-  user role. There is no client-side role switching.
-- **Forms** use React Hook Form + Zod (`zodResolver`) inside a real `<form>`
-  (Enter submits), with the shared accessible primitives `Input` / `Select` /
-  `Textarea` (label association, `aria-invalid` + `aria-describedby`, red error
-  text). Mutations disable the submit while pending and surface API errors via a
-  toast from `onError`.
-- **Code splitting** is route-level: every page is lazy-loaded and vendored
-  libraries are split into cacheable chunks, so the initial entry stays small.
+## Tech stack
 
-## Design system
+| Layer | Technology |
+| --- | --- |
+| Application | React 19, TypeScript 5.9 (lockfile), React Router 7 |
+| Data and forms | TanStack Query, Zustand, React Hook Form, Zod |
+| Interface | Tailwind CSS 4, Radix UI, DM Sans |
+| Build and checks | Vite 6, nginx, ESLint, Vitest, Testing Library |
 
-- Tokens live in `src/styles/theme.css` as a Tailwind v4 `@theme` block, imported
-  by `global.css`. The rendered typeface is **DM Sans** (loaded from Google Fonts
-  in `index.html`); it stands in for the licensed ABC Oracle brand face.
-- The spectrum gradient appears **only** as ambient glow (`.ambient-glow`,
-  `.ambient-backdrop`) and small accents (the logo mark, badge dots) — never as a
-  button or badge fill.
-- Status badges stay monochrome (neutral / muted / solid surfaces); colour is
-  carried only by a small leading dot or a subtle 1px border accent.
+## Testing
 
-## Tests
+```sh
+pnpm lint
+pnpm build
+pnpm test
+```
 
-Component, store, and page smoke tests run under Vitest + Testing Library
-(`pnpm test`) — e.g. button variants never use a saturated fill, the status →
-badge mapping is total over every `EnrollmentRequestStatus`, the draft store
-enforces the max-4 rule, and each admin page renders its data and empty states.
+[CI](.github/workflows/ci.yml) installs with a frozen lockfile and runs all three checks; the production dependency audit is report-only. Vitest covers components, stores, and page smoke flows: badge mappings, the draft's four-selection limit, sign-in, offerings, student requests, and administrative views with data and empty states. Use `pnpm test:watch` for the interactive runner.
+
+## Project structure
+
+```text
+src/app/       Shell, lazy routes, and role guards
+src/features/ Student, staff, and administrator workflows
+src/shared/   API client, queries, UI primitives, and client stores
+src/styles/   Tailwind theme and global styles
+test/         Shared test setup and smoke tests
+```
+
+## Related repositories
+
+- [profundiza-uq-backend](https://github.com/diegnghtmr/profundiza-uq-backend) — enrollment, session identity, group capacity, notifications, and reports.
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+Released under the [MIT License](LICENSE).
