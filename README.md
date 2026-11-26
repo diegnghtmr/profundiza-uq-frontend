@@ -115,3 +115,7 @@ Component, store, and page smoke tests run under Vitest + Testing Library
 (`pnpm test`) — e.g. button variants never use a saturated fill, the status →
 badge mapping is total over every `EnrollmentRequestStatus`, the draft store
 enforces the max-4 rule, and each admin page renders its data and empty states.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
